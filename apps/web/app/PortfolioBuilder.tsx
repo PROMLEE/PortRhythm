@@ -6,7 +6,9 @@ import AssetEditDialog, { type EditableAssetSelection } from "./AssetEditDialog"
 import MarketDataStatus from "./MarketDataStatus";
 import PreferencesTabs, { type PreferenceTab } from "./PreferencesTabs";
 import RebalancePlans from "./RebalancePlans";
-import type { MarketSessions } from "./market-sessions";
+import { useMarketSession } from "./use-market-session";
+import { useCryptoQuoteRefresh } from "./use-crypto-quote-refresh";
+import { withCryptoQuotes } from "./quote-refresh";
 import CashTransfers from "./CashTransfers";
 import type {BrokerageAccount} from "./accounts-model";
 
@@ -744,14 +746,7 @@ export default function PortfolioBuilder({
   const [cryptoCost, setCryptoCost] = useState("");
   const [cryptoBucketId, setCryptoBucketId] = useState("");
   const [lookingUpCrypto, setLookingUpCrypto] = useState(false);
-  const [cryptoRefreshError, setCryptoRefreshError] = useState("");
-  const [cryptoRefreshing, setCryptoRefreshing] = useState(false);
   const [fxRefreshError, setFxRefreshError] = useState("");
-  const cryptoRefreshInFlight = useRef(false);
-  const lastCryptoFetchAt = useRef(0);
-  useEffect(() => {
-    if (quotesRefreshing) lastCryptoFetchAt.current = Date.now();
-  }, [quotesRefreshing]);
   const [historyPeriod, setHistoryPeriod] = useState("all");
   const [trendKey, setTrendKey] = useState("__TOTAL__");
   const [show3d, setShow3d] = useState(false);
@@ -769,32 +764,7 @@ export default function PortfolioBuilder({
   const [previousFx,setPreviousFx]=useState<{rate:number;rateDate:string}|null>(null);
   useEffect(()=>{let active=true;setPreviousFx(null);if(draft?.includeFxGains && draft.usdKrwMode === "auto") void fetch("/api/portfolio/fx").then(r=>r.json()).then(p=>{if(active && p.previousRate && p.rateDate)setPreviousFx({rate:p.previousRate,rateDate:p.rateDate});}).catch(()=>{});return()=>{active=false;};},[draft?.includeFxGains,draft?.usdKrwMode,draft?.usdKrwRateDate]);
   const dailyFxRate=draft?.usdKrwMode === "auto" && previousFx?.rateDate === draft?.usdKrwRateDate?previousFx?.rate??null:null;
-  const [marketSession, setMarketSession] = useState<MarketSessions | null>(null);
-  useEffect(() => {
-    if (screen !== "rebalance" || !showRunPreview) return;
-    let active = true;
-    let pending = false;
-    let controller: AbortController | null = null;
-    setMarketSession(null);
-    async function refreshSession() {
-      if (pending || document.visibilityState === "hidden") return;
-      pending = true;
-      controller = new AbortController();
-      const timeout = window.setTimeout(() => controller?.abort(), 12_000);
-      try {
-        const response = await fetch("/api/markets/session", {cache:"no-store",signal:controller.signal});
-        if (!response.ok) throw new Error("Session unavailable");
-        const session: MarketSessions = await response.json();
-        if (active) setMarketSession(session);
-      } catch { if (active) setMarketSession(null); }
-      finally { window.clearTimeout(timeout); pending = false; }
-    }
-    void refreshSession();
-    const timer = window.setInterval(() => void refreshSession(), 60_000);
-    const onVisible = () => { if (document.visibilityState === "visible") { setMarketSession(null); void refreshSession(); } };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => { active=false; controller?.abort(); window.clearInterval(timer); document.removeEventListener("visibilitychange", onVisible); };
-  }, [screen,userId,showRunPreview]);
+  const marketSession = useMarketSession(screen === "rebalance" && showRunPreview, userId);
   const [cashBucketChoice, setCashBucketChoice] = useState<string | null>(null);
   const [cashInput, setCashInput] = useState("");
   const [budgetMode, setBudgetMode] = useState<"input" | "theoretical">(
@@ -940,92 +910,29 @@ export default function PortfolioBuilder({
   }, [quoteVersion]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const hasCryptoAssets = Boolean(draft?.cryptoAssets.length);
-  useEffect(() => {
-    if (!hasCryptoAssets || dirty) return;
-    let active = true;
-    async function refreshCrypto() {
-      if (
-        document.visibilityState !== "visible" ||
-        quotesRefreshing ||
-        cryptoRefreshInFlight.current ||
-        Date.now() - lastCryptoFetchAt.current < 55_000
-      )
-        return;
-      cryptoRefreshInFlight.current = true;
-      setCryptoRefreshing(true);
-      lastCryptoFetchAt.current = Date.now();
-      try {
-        const response = await fetch("/api/crypto/quotes", { method: "POST" });
-        const payload = (await response.json()) as {
-          quotes?: {
-            marketCode: string;
-            price: number | null;
-            previousClose: number | null;
-            checkedAt: string | null;
-            lastTradeAt: string | null;
-          }[];
-          message?: string;
-        };
-        if (!response.ok || !payload.quotes)
-          throw new Error(payload.message || "빗썸 시세 조회 실패");
-        if (active) {
-          onDailyCryptoQuotes(
-            Object.fromEntries(
-              payload.quotes.map((quote) => [
-                quote.marketCode,
-                {
-                  previousClose: quote.previousClose,
-                  checkedAt: quote.checkedAt,
-                },
-              ]),
-            ),
-          );
-          const byCode = new Map(
-            payload.quotes.map((quote) => [quote.marketCode, quote]),
-          );
-          setDraft((current) =>
-            current
-              ? {
-                  ...current,
-                  cryptoAssets: current.cryptoAssets.map((asset) => {
-                    const quote = byCode.get(asset.marketCode);
-                    return quote?.price === null || !quote
-                      ? asset
-                      : {
-                          ...asset,
-                          quotedPriceKrw: quote.price,
-                          quoteCheckedAt: quote.checkedAt,
-                          lastTradeAt: quote.lastTradeAt,
-                        };
-                  }),
-                }
-              : current,
-          );
-          setCryptoRefreshError(
-            payload.quotes?.some((quote) => quote.price === null)
-              ? "일부 빗썸 시세를 확인하지 못했습니다"
-              : "",
-          );
-        }
-      } catch (error) {
-        if (active)
-          setCryptoRefreshError(
-            error instanceof Error ? error.message : "빗썸 시세 조회 실패",
-          );
-      } finally {
-        cryptoRefreshInFlight.current = false;
-        setCryptoRefreshing(false);
-      }
-    }
-    void refreshCrypto();
-    const timer = window.setInterval(() => {
-      void refreshCrypto();
-    }, 60_000);
-    return () => {
-      active = false;
-      window.clearInterval(timer);
-    };
-  }, [hasCryptoAssets, dirty, quotesRefreshing]); // eslint-disable-line react-hooks/exhaustive-deps
+  const { cryptoRefreshing, cryptoRefreshError, invalidateCryptoQuotes } =
+    useCryptoQuoteRefresh({
+      enabled: hasCryptoAssets && !dirty,
+      stockRefreshing: quotesRefreshing,
+      onQuotes: (quotes) => {
+        onDailyCryptoQuotes(
+          Object.fromEntries(
+            quotes.map((quote) => [
+              quote.marketCode,
+              { previousClose: quote.previousClose, checkedAt: quote.checkedAt },
+            ]),
+          ),
+        );
+        setDraft((current) =>
+          current
+            ? {
+                ...current,
+                cryptoAssets: withCryptoQuotes(current.cryptoAssets, quotes),
+              }
+            : current,
+        );
+      },
+    });
 
   function change(next: Portfolio) {
     setDraft(next);
@@ -1385,7 +1292,7 @@ export default function PortfolioBuilder({
             ),
         )
       )
-        lastCryptoFetchAt.current = 0;
+        invalidateCryptoQuotes();
       setDraft(payload.portfolio);
       portfolioCache.set(userId, payload.portfolio);
       setDirty(false);
@@ -1983,7 +1890,7 @@ export default function PortfolioBuilder({
         composition={<PortfolioVisuals portfolio={draft} holdings={holdings}/>}
         targetTitle={rebalanceReady ? driftItems.length ? `${driftItems.length}개 포트 조정 필요` : "목표 범위 안에 있어요" : "배정·가격 확인 필요"}
         targetDetail={!rebalanceReady ? "미분류 자산과 시세를 확인하세요." : driftItems.length ? "정해둔 목표와 현재 비중의 차이를 확인하세요." : "다음 점검 때도 나의 투자 원칙을 이어가세요."}
-        metadata={<>{quotesRefreshing && <span>시세 갱신 중</span>}{(quoteError || fxRefreshError) && <p role="status">{quoteError || fxRefreshError}</p>}{Boolean(values?.missingPrices) && <span>가격 미확인 자산 {values?.missingPrices}개</span>}</>}
+        metadata={<>{quotesRefreshing && <span>시세 갱신 중</span>}{(quoteError || cryptoRefreshError || fxRefreshError) && <p role="status">{quoteError || cryptoRefreshError || fxRefreshError}</p>}{Boolean(values?.missingPrices) && <span>가격 미확인 자산 {values?.missingPrices}개</span>}</>}
       >
         <AssetList investments={mobileInvestments} manualAssets={draft.manualAssets} includeFx={Boolean(draft.includeFxGains)} previousFx={dailyFxRate} usdKrw={draft.usdKrw} gainView={gainView} dailyLoading={quotesRefreshing || cryptoRefreshing} onSelectAsset={onSelectAsset} assetSort={assetSort}/>
       </PortfolioDashboard>}

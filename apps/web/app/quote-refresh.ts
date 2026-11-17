@@ -76,3 +76,37 @@ export function quoteRefreshDue(
     : lastAttemptAt;
   return now - last >= (hasDailyQuotes ? 5 : 1) * 60 * 1000;
 }
+
+export type CryptoQuote = {
+  marketCode: string;
+  price: number | null;
+  previousClose: number | null;
+  checkedAt: string | null;
+  lastTradeAt: string | null;
+};
+
+type QuotedCryptoAsset = {
+  marketCode: string;
+  quotedPriceKrw: number | null;
+  quoteCheckedAt?: string | null;
+  lastTradeAt: string | null;
+};
+
+// Keeps the previous price for an asset whose quote is missing or failed.
+export function withCryptoQuotes<T extends QuotedCryptoAsset>(
+  assets: T[],
+  quotes: CryptoQuote[],
+): T[] {
+  const byCode = new Map(quotes.map((quote) => [quote.marketCode, quote]));
+  return assets.map((asset) => {
+    const quote = byCode.get(asset.marketCode);
+    return !quote || quote.price === null
+      ? asset
+      : {
+          ...asset,
+          quotedPriceKrw: quote.price,
+          quoteCheckedAt: quote.checkedAt,
+          lastTradeAt: quote.lastTradeAt,
+        };
+  });
+}
