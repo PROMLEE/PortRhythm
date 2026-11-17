@@ -32,7 +32,7 @@ export default function GuidePage() {
   return (
     <main className={styles.public}>
       <nav className={styles.publicNav} aria-label="서비스 안내">
-        <Link href="/">PR · PortRhythm</Link>
+        <Link href="/" className={styles.publicBrand}><span>PR</span>PortRhythm</Link>
         <Link href="/about">서비스 소개 →</Link>
       </nav>
       <UserGuide />

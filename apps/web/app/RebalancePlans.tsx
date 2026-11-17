@@ -459,7 +459,7 @@ function RunDetail({
                 }}
                 aria-label={`${item.bucketName} ${item.name} ${item.side === "buy" ? "매수" : "매도"} 거래 입력`}
               >
-                거래 입력 <ArrowRight size={13} />
+                거래 입력
               </button>
             )}
             {run.status === "active" && !progress.done && (
@@ -946,7 +946,6 @@ export default function RebalancePlans({
               onClick={start}
             >
               {busy ? "확정 중…" : "이 계획으로 시작"}
-              <ArrowRight size={15} />
             </button>
           </div>
         ))}
