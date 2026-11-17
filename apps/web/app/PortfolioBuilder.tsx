@@ -1890,7 +1890,7 @@ export default function PortfolioBuilder({
         composition={<PortfolioVisuals portfolio={draft} holdings={holdings}/>}
         targetTitle={rebalanceReady ? driftItems.length ? `${driftItems.length}개 포트 조정 필요` : "목표 범위 안에 있어요" : "배정·가격 확인 필요"}
         targetDetail={!rebalanceReady ? "미분류 자산과 시세를 확인하세요." : driftItems.length ? "정해둔 목표와 현재 비중의 차이를 확인하세요." : "다음 점검 때도 나의 투자 원칙을 이어가세요."}
-        metadata={<>{quotesRefreshing && <span>시세 갱신 중</span>}{(quoteError || fxRefreshError) && <p role="status">{quoteError || fxRefreshError}</p>}{Boolean(values?.missingPrices) && <span>가격 미확인 자산 {values?.missingPrices}개</span>}</>}
+        metadata={<>{quotesRefreshing && <span>시세 갱신 중</span>}{(quoteError || cryptoRefreshError || fxRefreshError) && <p role="status">{quoteError || cryptoRefreshError || fxRefreshError}</p>}{Boolean(values?.missingPrices) && <span>가격 미확인 자산 {values?.missingPrices}개</span>}</>}
       >
         <AssetList investments={mobileInvestments} manualAssets={draft.manualAssets} includeFx={Boolean(draft.includeFxGains)} previousFx={dailyFxRate} usdKrw={draft.usdKrw} gainView={gainView} dailyLoading={quotesRefreshing || cryptoRefreshing} onSelectAsset={onSelectAsset} assetSort={assetSort}/>
       </PortfolioDashboard>}
