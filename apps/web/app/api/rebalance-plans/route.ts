@@ -1,4 +1,5 @@
 import { currentUserId } from "../../../lib/auth";
+import { sameOrigin } from "../../../lib/admin";
 import {
   listRebalanceRuns,
   startRebalanceRun,
@@ -40,21 +41,11 @@ export async function POST(request: Request) {
   const userId = await currentUserId();
   if (!userId)
     return Response.json({ message: "로그인이 필요합니다." }, { status: 401 });
-  try {
-    if (
-      new URL(request.headers.get("origin") ?? "").host !==
-      request.headers.get("host")
-    )
-      return Response.json(
-        { message: "허용되지 않은 요청입니다." },
-        { status: 403 },
-      );
-  } catch {
+  if (!sameOrigin(request))
     return Response.json(
       { message: "허용되지 않은 요청입니다." },
       { status: 403 },
     );
-  }
   try {
     const text = await request.text();
     if (text.length > 250000) throw new RunError("요청이 너무 큽니다.");

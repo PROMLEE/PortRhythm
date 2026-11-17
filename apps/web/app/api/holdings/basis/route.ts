@@ -2,6 +2,7 @@ import { assertMeritzEditable } from "../../../../lib/meritz-readonly";
 import { CashTransferError } from "../../../cash-transfer";
 import { NextResponse } from "next/server";
 import { currentUserId } from "../../../../lib/auth";
+import { sameOrigin } from "../../../../lib/admin";
 import { db } from "../../../../lib/db";
 import { listHoldings } from "../../../../lib/holdings-db";
 import { validBasis } from "../../../fx-gains";
@@ -13,19 +14,11 @@ export async function PATCH(request: Request) {
       { message: "로그인이 필요합니다." },
       { status: 401 },
     );
-  try {
-    const origin = request.headers.get("origin");
-    if (origin && new URL(origin).host !== request.headers.get("host"))
-      return NextResponse.json(
-        { message: "허용되지 않은 요청입니다." },
-        { status: 403 },
-      );
-  } catch {
+  if (!sameOrigin(request))
     return NextResponse.json(
       { message: "허용되지 않은 요청입니다." },
       { status: 403 },
     );
-  }
   let body;
   try {
     body = await request.json();

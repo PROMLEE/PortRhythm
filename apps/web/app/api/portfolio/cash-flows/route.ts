@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { currentUserId } from "../../../../lib/auth";
+import { sameOrigin } from "../../../../lib/admin";
 import {
   addCashFlow,
   deleteCashFlow,
@@ -10,16 +11,6 @@ import {
 
 export const runtime = "nodejs";
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-function sameOrigin(request: Request) {
-  const origin = request.headers.get("origin");
-  if (!origin) return true;
-  try {
-    return new URL(origin).host === request.headers.get("host");
-  } catch {
-    return false;
-  }
-}
 
 function validDate(value: unknown): value is string {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value))

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { currentUserId } from "../../../../lib/auth";
+import { sameOrigin } from "../../../../lib/admin";
 import { fetchUsdKrwReference, fetchPreviousUsdKrw } from "../../../../lib/fx";
 import { listPortfolio, updateAutomaticFx } from "../../../../lib/portfolio-db";
 import { db } from "../../../../lib/db";
@@ -42,21 +43,11 @@ export async function POST(request: Request) {
       { message: "로그인이 필요합니다" },
       { status: 401 },
     );
-  const origin = request.headers.get("origin");
-  if (origin) {
-    try {
-      if (new URL(origin).host !== request.headers.get("host"))
-        return NextResponse.json(
-          { message: "허용되지 않은 요청입니다" },
-          { status: 403 },
-        );
-    } catch {
-      return NextResponse.json(
-        { message: "허용되지 않은 요청입니다" },
-        { status: 403 },
-      );
-    }
-  }
+  if (!sameOrigin(request))
+    return NextResponse.json(
+      { message: "허용되지 않은 요청입니다" },
+      { status: 403 },
+    );
   try {
     const portfolio = await listPortfolio(userId);
     if (!portfolio || portfolio.usdKrwMode !== "auto")

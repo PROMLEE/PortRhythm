@@ -1,19 +1,10 @@
 import { NextResponse } from "next/server";
 import { currentUserId } from "../../../../lib/auth";
+import { sameOrigin } from "../../../../lib/admin";
 import { recordSnapshot } from "../../../../lib/portfolio-db";
 import { refreshStoredCryptoQuotes } from "../../../../lib/bithumb";
 
 export const runtime = "nodejs";
-
-function sameOrigin(request: Request) {
-  const origin = request.headers.get("origin");
-  if (!origin) return true;
-  try {
-    return new URL(origin).host === request.headers.get("host");
-  } catch {
-    return false;
-  }
-}
 
 export async function POST(request: Request) {
   const userId = await currentUserId();

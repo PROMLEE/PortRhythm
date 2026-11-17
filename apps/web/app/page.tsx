@@ -58,6 +58,7 @@ import PortfolioBuilder, { stockAssetId, type AssetSelection } from "./Portfolio
 import UserGuide from "./UserGuide";
 import AccountsManager from "./AccountsManager";
 import {useMeritzSync} from "./use-meritz-sync";
+import { useQuoteRefresh } from "./use-quote-refresh";
 import {publishTradePortfolio} from "./portfolio-cache";
 import { protectUnsavedChanges } from "./unsaved-changes";
 import AccountSettings from "./AccountSettings";
@@ -111,17 +112,6 @@ type Instrument = {
   name: string;
   exchange: string | null;
 };
-type DailyStockQuote = {
-  market: Market;
-  symbol: string;
-  exchange: string | null;
-  previousClose: number | null;
-  checkedAt: string | null;
-};
-type DailyCryptoQuotes = Record<
-  string,
-  { previousClose: number | null; checkedAt: string | null }
->;
 const won = new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 0 });
 const dollars = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 2,
@@ -230,17 +220,6 @@ export default function PortfolioPage() {
   const [draft, setDraft] = useState<RecognizedHolding[]>([]);
   const [captureName, setCaptureName] = useState("");
   const [busy, setBusy] = useState(false);
-  const [quoteBusy, setQuoteBusy] = useState(false);
-  const [quoteError, setQuoteError] = useState("");
-  const quoteInFlight = useRef(false);
-  const [quoteVersion, setQuoteVersion] = useState(0);
-  const [dailyStockQuotes, setDailyStockQuotes] = useState<DailyStockQuote[]>(
-    [],
-  );
-  const [dailyCryptoQuotes, setDailyCryptoQuotes] = useState<DailyCryptoQuotes>(
-    {},
-  );
-  const lastQuoteAttemptAt = useRef(0);
   const [filter, setFilter] = useState<"ALL" | Market>("ALL");
   const [search, setSearch] = useState("");
   const [legacy, setLegacy] = useState<Holding[]>([]);
@@ -264,6 +243,23 @@ export default function PortfolioPage() {
   const editedHolding = holdings.find(row => row.id === editingHoldingId);
   const holdingDirty = Boolean(view === "edit" && !holdingTradeMode && editedHolding && (holdingQuantity !== String(editedHolding.quantity) || holdingCost !== (editedHolding.averageCost === null ? "" : String(editedHolding.averageCost))));
   const unsavedChanges = portfolioDirty || holdingDirty || holdingTradeDirty || (view === "import" && draft.length > 0);
+  const {
+    quoteBusy,
+    quoteError,
+    quoteVersion,
+    bumpQuoteVersion,
+    dailyStockQuotes,
+    dailyCryptoQuotes,
+    setDailyCryptoQuotes,
+    refreshQuotes,
+  } = useQuoteRefresh({
+    userId: session?.user?.appUserId ?? "account",
+    authenticated: authStatus === "authenticated",
+    active: holdings.length > 0 && (view === "portfolio" || view === "holdings"),
+    onHoldings: (rows) =>
+      setHoldings((current) => withPreviousQuotes(current, rows)),
+    onNotice: setNotice,
+  });
   const meritzSync = useMeritzSync({
     userId: session?.user?.appUserId ?? "", authenticated: authStatus === "authenticated",
     paused: loading || busy || quoteBusy || unsavedChanges || view === "edit" || view === "detail" || view === "import",
@@ -330,21 +326,6 @@ export default function PortfolioPage() {
 
   useEffect(() => {
     if (authStatus !== "authenticated") return;
-    try {
-      const cached = JSON.parse(
-        sessionStorage.getItem(
-          `pf-daily-quotes:v2:${session?.user?.appUserId ?? "account"}`,
-        ) ?? "null",
-      ) as { savedAt: number; quotes: DailyStockQuote[] } | null;
-      if (
-        cached &&
-        Date.now() - cached.savedAt < 5 * 60 * 1000 &&
-        Array.isArray(cached.quotes)
-      )
-        setDailyStockQuotes(cached.quotes);
-    } catch {
-      // Fresh quotes will be fetched when session storage is unavailable.
-    }
     let active = true;
     try {
       const previous = JSON.parse(
@@ -613,7 +594,7 @@ export default function PortfolioPage() {
         }),
       );
       setHoldings(result.holdings);
-      setQuoteVersion((version) => version + 1);
+      bumpQuoteVersion();
       setSavedInstrumentMatches((current) => ({ ...current, [row.id]: [] }));
       setNotice(
         `${instrument.name} · ${instrument.symbol} 코드를 저장했습니다.`,
@@ -662,7 +643,7 @@ export default function PortfolioPage() {
         }),
       );
       setHoldings(result.holdings);
-      setQuoteVersion((version) => version + 1);
+      bumpQuoteVersion();
       setEditingHoldingId(null);
       setNotice(`${holdings.find((row) => row.id === editingHoldingId)?.name ?? "종목"} 저장 완료 · ${quantity.toLocaleString("ko-KR", {maximumFractionDigits:6})}주 · 주당 평균 매입단가 ${averageCost === null ? "미입력" : `${averageCost.toLocaleString("ko-KR")} ${holdings.find((row) => row.id === editingHoldingId)?.market === "US" ? "USD" : "원"}`}`);
     } catch (error) {
@@ -800,131 +781,6 @@ export default function PortfolioPage() {
       setDeletingHoldingId(null);
     }
   }
-
-  async function refreshQuotes(silent = false) {
-    if (quoteInFlight.current) return;
-    quoteInFlight.current = true;
-    lastQuoteAttemptAt.current = Date.now();
-    try {
-      sessionStorage.setItem(
-        `pf-quote-refresh:${session?.user?.appUserId ?? "account"}`,
-        String(Date.now()),
-      );
-    } catch {
-      // Private browsing may disable storage; the in-flight guard still applies.
-    }
-    setQuoteBusy(true);
-    setQuoteError("");
-    if (!silent) setNotice("시세를 조회하는 중입니다.");
-    try {
-      const result = await data<{
-        holdings: Holding[];
-        quotes: {
-          market?: Market;
-          symbol?: string;
-          marketCode?: string;
-          exchange?: string | null;
-          price: number | null;
-          previousClose?: number | null;
-          checkedAt?: string | null;
-          error?: string;
-        }[];
-      }>(await fetch("/api/quotes", { method: "POST" }));
-      setHoldings(current => withPreviousQuotes(current, result.holdings));
-      const daily = result.quotes
-        .filter(
-          (quote): quote is typeof quote & { market: Market; symbol: string } =>
-            (quote.market === "KR" || quote.market === "US") &&
-            typeof quote.symbol === "string",
-        )
-        .map((quote) => ({
-          market: quote.market,
-          symbol: quote.symbol,
-          exchange: quote.exchange ?? null,
-          previousClose: quote.previousClose ?? null,
-          checkedAt: quote.checkedAt ?? null,
-        }));
-      setDailyStockQuotes(daily);
-      setDailyCryptoQuotes(
-        Object.fromEntries(
-          result.quotes
-            .filter((quote) => typeof quote.marketCode === "string")
-            .map((quote) => [
-              quote.marketCode!,
-              {
-                previousClose: quote.previousClose ?? null,
-                checkedAt: quote.checkedAt ?? null,
-              },
-            ]),
-        ),
-      );
-      try {
-        sessionStorage.setItem(
-          `pf-daily-quotes:v2:${session?.user?.appUserId ?? "account"}`,
-          JSON.stringify({ savedAt: Date.now(), quotes: daily }),
-        );
-      } catch {
-        // A fresh API response is still available in memory.
-      }
-      setQuoteVersion((version) => version + 1);
-      const count = result.quotes.filter(
-        (quote) => quote.price !== null,
-      ).length;
-      const firstError = result.quotes.find((quote) => quote.error)?.error;
-      if (firstError) setQuoteError(firstError);
-      if (!silent)
-        setNotice(
-          `${count}개 자산의 시세를 갱신했습니다.${result.quotes.length > count ? ` ${result.quotes.length - count}개는 조회되지 않았습니다.` : ""}${firstError ? ` ${firstError}` : ""}`,
-        );
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "시세를 조회하지 못했습니다.";
-      setQuoteError(message);
-      if (!silent) setNotice(message);
-    } finally {
-      setQuoteBusy(false);
-      quoteInFlight.current = false;
-    }
-  }
-
-  useEffect(() => {
-    if (
-      authStatus !== "authenticated" ||
-      !holdings.length ||
-      (view !== "portfolio" && view !== "holdings")
-    )
-      return;
-    const key = `pf-quote-refresh:${session?.user?.appUserId ?? "account"}`;
-    const refreshWhenVisible = () => {
-      if (document.visibilityState !== "visible" || quoteInFlight.current)
-        return;
-      const hasDailyQuotes = dailyStockQuotes.some(
-        (quote) => quote.previousClose !== null,
-      );
-      let last = lastQuoteAttemptAt.current;
-      try {
-        if (hasDailyQuotes)
-          last = Math.max(last, Number(sessionStorage.getItem(key) ?? 0));
-      } catch {
-        // Refresh still works when session storage is unavailable.
-      }
-      if (Date.now() - last < (hasDailyQuotes ? 5 : 1) * 60 * 1000) return;
-      void refreshQuotes(true);
-    };
-    refreshWhenVisible();
-    const timer = window.setInterval(refreshWhenVisible, 60_000);
-    document.addEventListener("visibilitychange", refreshWhenVisible);
-    return () => {
-      window.clearInterval(timer);
-      document.removeEventListener("visibilitychange", refreshWhenVisible);
-    };
-  }, [
-    authStatus,
-    holdings.length,
-    session?.user?.appUserId,
-    view,
-    dailyStockQuotes,
-  ]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function migrateLegacy() {
     setBusy(true);
@@ -1274,7 +1130,7 @@ export default function PortfolioPage() {
               })}
             </nav>
           )}
-          {view === "accounts" && <AccountsManager onCashManage={()=>go("edit")} userId={session.user?.appUserId ?? ""} holdings={holdings} onHoldings={(rows)=>{setHoldings(rows);setQuoteVersion(version=>version+1);}} onNotice={setNotice} onDirty={setPortfolioDirty} onOpenAsset={row=>openAsset({id:`holding:${row.id}`,kind:"stock"},"accounts")} onRefreshQuotes={()=>void refreshQuotes(true)} />}
+          {view === "accounts" && <AccountsManager onCashManage={()=>go("edit")} userId={session.user?.appUserId ?? ""} holdings={holdings} onHoldings={(rows)=>{setHoldings(rows);bumpQuoteVersion();}} onNotice={setNotice} onDirty={setPortfolioDirty} onOpenAsset={row=>openAsset({id:`holding:${row.id}`,kind:"stock"},"accounts")} onRefreshQuotes={()=>void refreshQuotes(true)} />}
           {view === "guide" && <UserGuide onNavigate={go} />}
           {view === "portfolio" && showStartGuide && (
             <section className={styles.startGuide} aria-label="처음 시작 안내">

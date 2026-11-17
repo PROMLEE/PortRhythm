@@ -6,7 +6,7 @@ const state = { user: 'owner', calls: [], exists: true };
 globalThis.__pfFlowTest = state;
 let source = ts.transpileModule(await readFile(new URL('../app/api/portfolio/cash-flows/route.ts',import.meta.url),'utf8'), {compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
 source = source.replace(/import \{ NextResponse \} from "next\/server";/, 'const NextResponse = {json:(data,options)=>Response.json(data,options)};')
-.replace(/import \{ currentUserId \} from "[^\"]+";/,'const currentUserId = async()=>globalThis.__pfFlowTest.user;')
+.replace(/import \{ sameOrigin \} from "[^"]+";/,'const sameOrigin=r=>{try{const o=new URL(r.headers.get("origin")??"");return ["http:","https:"].includes(o.protocol)&&o.host===(r.headers.get("host")??new URL(r.url).host);}catch{return false;}};').replace(/import \{ publicErrorMessage \} from "[^"]+";/,'const publicErrorMessage=(e,f)=>e instanceof Error&&typeof e.code!=="string"&&/[가-힣]/.test(e.message)&&e.message.length<=200?e.message:f;').replace(/import \{ currentUserId \} from "[^\"]+";/,'const currentUserId = async()=>globalThis.__pfFlowTest.user;')
 .replace(/import \{[^}]+\} from "[^\"]+portfolio-db";/, `const listPortfolio=async()=>globalThis.__pfFlowTest.exists ? {cashFlows:[]} : null;
 const addCashFlow=async(user,flow)=>{globalThis.__pfFlowTest.calls.push({kind:'add',user,flow});return {cashFlows:[flow]};};
 const updateCashFlow=async(user,flow)=>{globalThis.__pfFlowTest.calls.push({kind:'update',user,flow});return flow.id === '11111111-1111-4111-8111-111111111111' ? {cashFlows:[flow]} : null;};
