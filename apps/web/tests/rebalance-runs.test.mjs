@@ -250,7 +250,7 @@ let api = await compile("../app/api/rebalance-plans/route.ts");
 const state = { user: "owner", calls: [] };
 globalThis.__runApiTest = state;
 api = api
-  .replace(
+  .replace(/import \{ sameOrigin \} from "[^"]+";/,'const sameOrigin=r=>{try{const o=new URL(r.headers.get("origin")??"");return ["http:","https:"].includes(o.protocol)&&o.host===(r.headers.get("host")??new URL(r.url).host);}catch{return false;}};').replace(/import \{ publicErrorMessage \} from "[^"]+";/,'const publicErrorMessage=(e,f)=>e instanceof Error&&typeof e.code!=="string"&&/[가-힣]/.test(e.message)&&e.message.length<=200?e.message:f;').replace(
     /import \{ currentUserId \} from "\.\.\/\.\.\/\.\.\/lib\/auth";/,
     `const currentUserId=async()=>globalThis.__runApiTest.user;`,
   )

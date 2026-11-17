@@ -2,6 +2,7 @@ import { CashTransferError } from "../../cash-transfer";
 import { NextResponse } from "next/server";
 import type { Holding } from "../../holdings";
 import { currentUserId } from "../../../lib/auth";
+import { sameOrigin } from "../../../lib/admin";
 import {
   addHoldings,
   addHoldingWithCash,
@@ -19,16 +20,6 @@ import {
 } from "../../position-trade";
 
 export const runtime = "nodejs";
-
-function sameOrigin(request: Request) {
-  const origin = request.headers.get("origin");
-  if (!origin) return true;
-  try {
-    return new URL(origin).host === request.headers.get("host");
-  } catch {
-    return false;
-  }
-}
 
 function valid(row: Holding) {
   return (

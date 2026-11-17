@@ -2,6 +2,8 @@ import {CashTransferError} from "../../cash-transfer";
 import { NextResponse } from "next/server";
 import type { Portfolio } from "../../portfolio-model";
 import { currentUserId } from "../../../lib/auth";
+import { publicErrorMessage } from "../../../lib/api-error";
+import { sameOrigin } from "../../../lib/admin";
 import {
   listPortfolio,
   listCryptoAssets,
@@ -13,16 +15,6 @@ import { listKrwCryptoMarkets } from "../../../lib/bithumb";
 
 export const runtime = "nodejs";
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-function sameOrigin(request: Request) {
-  const origin = request.headers.get("origin");
-  if (!origin) return true;
-  try {
-    return new URL(origin).host === request.headers.get("host");
-  } catch {
-    return false;
-  }
-}
 
 function valid(input: Portfolio) {
   if (input?.includeFxGains !== undefined && typeof input.includeFxGains !== "boolean") return false;
@@ -298,10 +290,7 @@ async function saveRequest(request: Request, assetsOnly: boolean) {
       return NextResponse.json({message:"메리츠 자동 동기화에 연결된 현금입니다. 계좌 관리에서 연결 해제 후 삭제해 주세요."},{status:409});
     return NextResponse.json(
       {
-        message:
-          error instanceof Error
-            ? error.message
-            : "포트폴리오를 저장하지 못했습니다",
+        message: publicErrorMessage(error, "포트폴리오를 저장하지 못했습니다"),
       },
       { status: error instanceof CashTransferError ? error.status : 500 },
     );

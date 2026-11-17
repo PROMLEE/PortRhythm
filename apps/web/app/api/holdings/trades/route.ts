@@ -1,6 +1,7 @@
 import { CashTransferError } from "../../../cash-transfer";
 import { NextResponse } from "next/server";
 import { currentUserId } from "../../../../lib/auth";
+import { sameOrigin } from "../../../../lib/admin";
 import { applyHoldingTrade } from "../../../../lib/holding-trades-db";
 import {
   PositionTradeError,
@@ -14,19 +15,11 @@ export async function POST(request: Request) {
       { message: "로그인이 필요합니다." },
       { status: 401 },
     );
-  const origin = request.headers.get("origin");
-  try {
-    if (origin && new URL(origin).host !== request.headers.get("host"))
-      return NextResponse.json(
-        { message: "허용되지 않은 요청입니다." },
-        { status: 403 },
-      );
-  } catch {
+  if (!sameOrigin(request))
     return NextResponse.json(
       { message: "허용되지 않은 요청입니다." },
       { status: 403 },
     );
-  }
   let body: unknown;
   try {
     body = await request.json();

@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { currentUserId } from "../../../lib/auth";
+import { rateLimited } from "../../../lib/rate-limit";
+import { publicErrorMessage } from "../../../lib/api-error";
+import { sameOrigin } from "../../../lib/admin";
 import {
   stockQuotesConfigured,
   quoteStocks,
@@ -16,16 +19,6 @@ import { refreshStoredCryptoQuotes } from "../../../lib/bithumb";
 
 export const runtime = "nodejs";
 
-function sameOrigin(request: Request) {
-  const origin = request.headers.get("origin");
-  if (!origin) return true;
-  try {
-    return new URL(origin).host === request.headers.get("host");
-  } catch {
-    return false;
-  }
-}
-
 export async function POST(request: Request) {
   const userId = await currentUserId();
   if (!userId) {
@@ -40,6 +33,11 @@ export async function POST(request: Request) {
       { status: 403 },
     );
   }
+  if (rateLimited(`quotes:${userId}`, 20))
+    return NextResponse.json(
+      { message: "시세 조회 요청이 많습니다. 잠시 후 다시 시도해 주세요." },
+      { status: 429, headers: { "Retry-After": "60" } },
+    );
   try {
     const [cryptoCodes, allHoldings, rules] = await Promise.all([
       listCryptoAssets(userId),
@@ -136,8 +134,7 @@ export async function POST(request: Request) {
   } catch (error) {
     return NextResponse.json(
       {
-        message:
-          error instanceof Error ? error.message : "주식 시세 API 연결 실패",
+        message: publicErrorMessage(error, "주식 시세 API 연결 실패"),
       },
       { status: 502 },
     );

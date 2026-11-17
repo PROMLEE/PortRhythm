@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { currentUserId } from "../../../lib/auth";
+import { sameOrigin } from "../../../lib/admin";
 import {
   createAccount,
   listAccounts,
@@ -8,14 +9,6 @@ import {
 import { listHoldings } from "../../../lib/holdings-db";
 export const runtime = "nodejs";
 const uuid = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
-function allowed(request: Request) {
-  const origin = request.headers.get("origin");
-  try {
-    return !origin || new URL(origin).host === request.headers.get("host");
-  } catch {
-    return false;
-  }
-}
 export async function GET() {
   const user = await currentUserId();
   if (!user)
@@ -39,7 +32,7 @@ async function mutate(request: Request, edit: boolean) {
       { message: "로그인이 필요합니다" },
       { status: 401 },
     );
-  if (!allowed(request))
+  if (!sameOrigin(request))
     return NextResponse.json(
       { message: "허용되지 않은 요청입니다" },
       { status: 403 },
