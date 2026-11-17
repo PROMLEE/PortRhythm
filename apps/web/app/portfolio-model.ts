@@ -195,6 +195,27 @@ export function portfolioValues(portfolio: Portfolio, holdings: Holding[]) {
   return { values, unassigned, total, missingPrices };
 }
 
+/** 어느 포트에도 배정되지 않은 자산 개수(주식·직접 입력·가상자산). 가격 유무와 무관하게 개수로 센다. */
+export function countUnassignedAssets(
+  portfolio: Portfolio,
+  holdings: Holding[],
+): number {
+  const bucketIds = new Set(portfolio.buckets.map((bucket) => bucket.id));
+  const isAssigned = (bucketId: string | null) =>
+    bucketId !== null && bucketIds.has(bucketId);
+  let count = 0;
+  for (const holding of holdings) {
+    if (!isAssigned(holdingBucketId(portfolio, holding))) count++;
+  }
+  for (const asset of portfolio.manualAssets) {
+    if (!isAssigned(asset.bucketId)) count++;
+  }
+  for (const asset of portfolio.cryptoAssets) {
+    if (!isAssigned(asset.bucketId)) count++;
+  }
+  return count;
+}
+
 export const EXAMPLE_BUCKETS: Omit<Bucket, "id">[] = [
   { name: "미국 지수", targetPercent: 35, color: "#177C88" },
   { name: "한국 지수", targetPercent: 25, color: "#42A994" },

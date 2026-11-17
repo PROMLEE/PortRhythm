@@ -40,12 +40,14 @@ import AssetIcon from "./AssetIcon";
 import AssetSortSelect, { compareAssets, type AssetSort } from "./asset-sort";
 import Portfolio3D from "./Portfolio3D";
 import PortfolioVisuals from "./PortfolioVisuals";
+import SaveStatus from "./SaveStatus";
 import {
   EXAMPLE_BUCKETS,
   EXAMPLE_RULES,
   cryptoAssetValueKrw,
   holdingValueKrw,
   holdingBucketId,
+  countUnassignedAssets,
   manualAssetValueKrw,
   portfolioValues,
   type CashFlow,
@@ -72,6 +74,7 @@ export type AssetSelection = {
   kind: "stock" | "crypto" | "manual" | "candidate";
   id: string;
 };
+export type NoticeAction = { label: string; view: "strategy" | "allocation" };
 export function stockAssetId(holding: Holding) {
   return holding.symbol
     ? `${holding.market}:${holding.exchange ?? ""}:${holding.symbol.toUpperCase()}`
@@ -117,7 +120,9 @@ type Props = {
   onNavigate: (
     screen: "preferences" | "strategy" | "composition" | "allocation" | "rebalance" | "history" | "settings" | "accounts",
   ) => void;
-  onDirtyChange: (dirty: boolean) => void;
+  onDirtyChange: (state: { draft: boolean; screen: boolean }) => void;
+  onPortfolioPresence: (saved: boolean) => void;
+  onNoticeAction: (message: string, action: NoticeAction) => void;
 };
 const won = new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 0 });
 const quantityFormat = new Intl.NumberFormat("ko-KR", {
@@ -632,7 +637,7 @@ function AssetDetail({
         </fieldset>
         {error && <p role="alert">{error}</p>}
         <div className={styles.detailFormActions}>
-          <span className={styles.saved} role="status">{editDirty ? "미저장 · 저장하면 이 자산에 반영됩니다" : "저장된 보유 정보"}</span>
+          <span className={styles.saved} role="status">{editDirty ? "저장 안 됨" : "저장된 보유 정보"}</span>
           <button type="submit" className={styles.detailEdit} disabled={saving || assigning || !editDirty}>{saving ? "저장 중…" : "저장"}</button>
           <button type="button" className={styles.ghost} disabled={saving} onClick={closeEdit}>취소</button>
           {manual && !manual.readOnly && <button type="button" className={styles.detailRemove} disabled={saving || assigning}
@@ -695,6 +700,8 @@ export default function PortfolioBuilder({
   detailBackLabel,
   onNavigate,
   onDirtyChange,
+  onPortfolioPresence,
+  onNoticeAction,
 }: Props) {
   const [draft, setDraft] = useState<Portfolio | null>(
     () => portfolioCache.get(userId) ?? null,
@@ -798,7 +805,7 @@ export default function PortfolioBuilder({
     if (screen !== "history") { setFlowAmount(""); setFlowNote(""); setFlowTime(""); setEditingFlowId(null); }
   }, [screen]);
   const flowDirty = Boolean(flowAmount || flowNote || flowTime || editingFlowId);
-  useEffect(() => onDirtyChange(dirty || detailDirty || flowDirty || transferDirty || runDirty || reviewDirty), [dirty, detailDirty, flowDirty, transferDirty, runDirty, reviewDirty, onDirtyChange]);
+  useEffect(() => onDirtyChange({ draft: dirty, screen: detailDirty || flowDirty || transferDirty || runDirty || reviewDirty }), [dirty, detailDirty, flowDirty, transferDirty, runDirty, reviewDirty, onDirtyChange]);
   function editFlow(flow: CashFlow) {
     setEditingFlowId(flow.id); setFlowDate(flow.date); setFlowAmount(String(Math.abs(flow.amountKrw)));
     setFlowKind(flow.amountKrw > 0 ? "deposit" : "withdrawal"); setFlowNote(flow.note); setFlowTime(flow.occurredAt ? kstTime(flow.occurredAt, true) : "");
@@ -842,6 +849,7 @@ export default function PortfolioBuilder({
         return payload.portfolio ?? null;
       })
       .then((portfolio) => {
+        if (active) onPortfolioPresence(Boolean(portfolio));
         if (active && !dirtyRef.current) {
           portfolioCache.set(userId, portfolio);
           setDraft(portfolio);
@@ -978,6 +986,7 @@ export default function PortfolioBuilder({
     change(plan);
     setRuleBucketId(plan.buckets[0].id);
     setManualBucketId(plan.buckets[0].id);
+    if (screen !== "strategy") onNavigate("strategy");
   }
   function editBucket(id: string, key: keyof Bucket, value: string) {
     if (!draft) return;
@@ -1296,7 +1305,12 @@ export default function PortfolioBuilder({
       setDraft(payload.portfolio);
       portfolioCache.set(userId, payload.portfolio);
       setDirty(false);
-      onNotice(`저장 완료 · ${changedSections.join(" / ") || "변경 내용"} · 오늘 평가액 갱신`);
+      onPortfolioPresence(true);
+      const summary = `저장 완료 · ${changedSections.join(" / ") || "변경 내용"} · 오늘 평가액 갱신`;
+      const unassigned = countUnassignedAssets(payload.portfolio, holdings);
+      if (unassigned > 0 && screen !== "allocation")
+        onNoticeAction(`${summary} · 미분류 자산 ${unassigned}개가 있습니다.`, { label: "자산 배정하기", view: "allocation" });
+      else onNotice(summary);
       if (!assetsOnly)
         void fetch("/api/holdings", { cache: "no-store" })
           .then(async (response) => {
@@ -1704,42 +1718,35 @@ export default function PortfolioBuilder({
   );
   const titles = {
     dashboard: [
-      "MY PORTFOLIO",
       "내 포트폴리오",
       "전체 비중과 핵심 지표를 확인하세요.",
     ],
     strategy: [
-      "TARGET ALLOCATION",
       "목표 설계",
       "원하는 포트 비중과 리밸런싱 기준을 정하세요.",
     ],
-    preferences: ["PREFERENCES", "설정", "필요한 설정을 골라 변경하세요."],
+    preferences: ["설정", "필요한 설정을 골라 변경하세요."],
     composition: [
-      "PORTFOLIO MIX",
       "포트별 자산 비중",
       "현재 보유 비중과 목표의 차이를 살펴보세요.",
     ],
     allocation: [
-      "ASSET ALLOCATION",
       "자산 배정",
       "보유 자산을 원하는 포트에 연결하세요.",
     ],
     edit: [
-      "ASSET EDITOR",
       "자산 수정",
       "주식·가상자산·현금의 보유 정보를 수정하세요.",
     ],
     rebalance: [
-      "REBALANCE",
       "리밸런싱",
       "목표 비중에 맞는 거래 수량을 확인하세요.",
     ],
     history: [
-      "HISTORY",
       "자산 기록",
       "포트별 자산 추이와 입출금 기록을 확인하세요.",
     ],
-    detail: ["ASSET DETAIL", selectedAsset?.kind === "candidate" ? "매수 후보 상세" : "자산 상세", selectedAsset?.kind === "candidate" ? "종목 정보와 기존 보유 여부를 확인하세요." : "보유 현황과 평가손익을 확인하세요."],
+    detail: [selectedAsset?.kind === "candidate" ? "매수 후보 상세" : "자산 상세", selectedAsset?.kind === "candidate" ? "종목 정보와 기존 보유 여부를 확인하세요." : "보유 현황과 평가손익을 확인하세요."],
   }[screen];
 
   if (loading)
@@ -1749,8 +1756,11 @@ export default function PortfolioBuilder({
   if (!draft)
     return (
       <div className={styles.start}>
-        <p>이전에 등록한 자산이 보이지 않나요? <button type="button" onClick={() => onNavigate("settings")}>로그인 계정 확인</button></p>
-        <span>PORTFOLIO DESIGNER</span>
+        {holdings.length > 0 ? (
+          <p>등록한 종목 {holdings.length}개가 있습니다. 목표 비중을 정하면 현재 비중과 비교할 수 있습니다.</p>
+        ) : (
+          <p>이전에 등록한 자산이 보이지 않나요? <button type="button" onClick={() => onNavigate("settings")}>로그인 계정 확인</button></p>
+        )}
         <h1>내 투자 원칙부터 정해보세요.</h1>
         <p>
           어떤 자산을 몇 퍼센트 보유할지 직접 정하고, 종목코드로 실제 자산을
@@ -1758,7 +1768,7 @@ export default function PortfolioBuilder({
         </p>
         <div>
           <button onClick={() => begin(true)}>
-            예시 구성으로 시작 <ArrowRight size={17} />
+            예시 구성으로 시작
           </button>
           <button onClick={() => begin(false)}>빈 포트로 시작</button>
         </div>
@@ -1787,11 +1797,17 @@ export default function PortfolioBuilder({
           && holdings.every(row => row.currentPrice !== null && row.quoteCheckedAt && Date.now()-Date.parse(row.quoteCheckedAt)<86400000)
           && draft.cryptoAssets.every(asset => asset.quotedPriceKrw !== null && asset.quoteCheckedAt && Date.now()-Date.parse(asset.quoteCheckedAt)<86400000))}
         weights={draft.buckets.map(bucket=>({id:bucket.id,percent:values && values.total>0?(values.values.get(bucket.id)??0)/values.total*100:0}))}/>
+      {screen === "dashboard" && dirty && (
+        <div className={styles.unsavedBar}>
+          <p>목표 비중이 아직 저장되지 않았습니다.</p>
+          <SaveStatus dirty={dirty} saving={saving} onSave={save} />
+        </div>
+      )}
       {screen !== "edit" && screen !== "dashboard" && (
         <div className={styles.heading}>
           <div>
-            <h1>{titles[1]}</h1>
-            <p>{titles[2]}</p>
+            <h1>{titles[0]}</h1>
+            <p>{titles[1]}</p>
           </div>
           <div>
             {screen !== "preferences" && <button
@@ -1802,15 +1818,7 @@ export default function PortfolioBuilder({
               <RefreshCw size={16} />{" "}
               {refreshing || quotesRefreshing ? "갱신 중" : "시세 갱신"}
             </button>}
-            {dirty ? (
-              <button className={styles.save} onClick={save} disabled={saving}>
-                {saving ? "저장 중" : "미저장 · 변경 내용 저장"}
-              </button>
-            ) : ["strategy", "allocation"].includes(screen) && !reviewDirty ? (
-              <span className={styles.saved}>
-                <Check size={15} /> 저장됨
-              </span>
-            ) : null}
+            <SaveStatus dirty={dirty} saving={saving} onSave={save} showSaved={["strategy", "allocation"].includes(screen) && !reviewDirty} />
           </div>
         </div>
       )}
@@ -2554,10 +2562,7 @@ export default function PortfolioBuilder({
           </AssetSections>
           {screen === "edit" && dirty && (
             <div className={styles.assetEditorSave}>
-              <span className={styles.saved} role="status">미저장 · 추가한 자산을 저장해 주세요</span>
-              <button className={styles.save} onClick={save} disabled={saving}>
-                {saving ? "저장 중" : "자산 변경 저장"}
-              </button>
+              <SaveStatus dirty={dirty} saving={saving} onSave={save} saveLabel="자산 변경 저장" />
             </div>
           )}
           {screen === "edit" && <CashTransfers portfolio={draft} accounts={cashAccounts} disabled={dirty || saving} onDirty={setTransferDirty} onSaved={(next,message)=>{portfolioCache.set(userId,next);setDraft(next);setDirty(false);onNotice(message);}} />}
@@ -2565,9 +2570,9 @@ export default function PortfolioBuilder({
       )}
       {(screen === "allocation" || screen === "edit" || screen === "preferences") && dirty && (
         <div className={styles.mobileSaveBar}>
-          <button type="button" onClick={save} disabled={saving}>
-            {saving ? "저장 중" : "미저장 · 변경 내용 저장"}
-          </button>
+          <div>
+            <SaveStatus dirty={dirty} saving={saving} onSave={save} />
+          </div>
         </div>
       )}
       {screen === "rebalance" && <ReviewSettings userId={userId} compact onSettings={()=>{setRequestedPreferenceTab("review");onNavigate("preferences");}} onDirty={setReviewDirty}/>}
@@ -3294,7 +3299,7 @@ export default function PortfolioBuilder({
               </p>
               <button type="button" className={styles.ghost} onClick={onEditHoldings}>현금 잔고 수정 →</button>
 
-              {flowDirty && <p className={styles.help} role="status">미저장 · {editingFlowId ? "선택한 입출금 내역을 수정 중입니다." : "입력한 입출금은 기록 버튼을 눌러 저장하세요."} <button type="button" className={styles.ghost} disabled={flowSaving} onClick={() => { setEditingFlowId(null); setFlowAmount(""); setFlowNote(""); setFlowTime(""); }}>{editingFlowId ? "수정 취소" : "입력 취소"}</button></p>}
+              {flowDirty && <p className={styles.help} role="status">저장하지 않은 변경이 있습니다. {editingFlowId ? "선택한 입출금 내역을 수정 중입니다." : "입력한 입출금은 기록 버튼을 눌러 저장하세요."} <button type="button" className={styles.ghost} disabled={flowSaving} onClick={() => { setEditingFlowId(null); setFlowAmount(""); setFlowNote(""); setFlowTime(""); }}>{editingFlowId ? "수정 취소" : "입력 취소"}</button></p>}
               <fieldset className={styles.flowForm} disabled={flowSaving}>
                 <label>실제 입출금 시각 · 한국 시간<input ref={flowTimeInput} type="time" step="1" value={flowTime} onInput={(event) => setFlowTime(event.currentTarget.value)} onChange={(event) => setFlowTime(event.target.value)} aria-label="입출금 발생 시각" /><small>모르면 비워두세요. 등록 시각을 발생 시각으로 가정하지 않습니다.</small><button type="button" className={styles.ghost} onClick={() => { setFlowDate(kstDate()); setFlowTime(kstTime(new Date().toISOString(), true)); }}>현재 시각 사용</button></label>
                 <input

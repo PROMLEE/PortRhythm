@@ -524,7 +524,7 @@ export default function HoldingTradeEditor({
       )}
       {dirty && (
         <p className={styles.dirty} role="status">
-          미저장 · {side === "buy" ? "추가 매수" : "매도"} 입력
+          저장하지 않은 {side === "buy" ? "추가 매수" : "매도"} 입력이 있습니다.
         </p>
       )}
       <div className={styles.actions}>
