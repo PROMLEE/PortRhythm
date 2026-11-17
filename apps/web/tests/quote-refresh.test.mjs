@@ -4,7 +4,7 @@ import test from "node:test";
 import ts from "typescript";
 
 const source = await readFile(new URL("../app/quote-refresh.ts", import.meta.url), "utf8");
-const { dailyStockQuotesFrom, dailyCryptoQuotesFrom, quoteRefreshNotice, quoteRefreshDue } =
+const { dailyStockQuotesFrom, dailyCryptoQuotesFrom, quoteRefreshNotice, quoteRefreshDue, withCryptoQuotes } =
   new Function(
     "exports",
     ts.transpileModule(source, {
@@ -52,4 +52,19 @@ test("another tab's attempt delays refresh only when daily baselines exist", () 
   const minute = 60_000, now = 10 * minute;
   assert.equal(quoteRefreshDue(now, 0, now - minute, true), false);
   assert.equal(quoteRefreshDue(now, 0, now - minute, false), true);
+});
+
+test("crypto prices update matching assets and keep the previous price when a quote fails", () => {
+  const assets = [
+    { id: "a", marketCode: "KRW-BTC", quotedPriceKrw: 100, quoteCheckedAt: "old", lastTradeAt: "old" },
+    { id: "b", marketCode: "KRW-ETH", quotedPriceKrw: 50, quoteCheckedAt: "old", lastTradeAt: "old" },
+    { id: "c", marketCode: "KRW-XRP", quotedPriceKrw: 1, quoteCheckedAt: "old", lastTradeAt: "old" },
+  ];
+  const next = withCryptoQuotes(assets, [
+    { marketCode: "KRW-BTC", price: 120, previousClose: 110, checkedAt: "new", lastTradeAt: "trade" },
+    { marketCode: "KRW-ETH", price: null, previousClose: null, checkedAt: null, lastTradeAt: null },
+  ]);
+  assert.deepEqual(next[0], { id: "a", marketCode: "KRW-BTC", quotedPriceKrw: 120, quoteCheckedAt: "new", lastTradeAt: "trade" });
+  assert.equal(next[1], assets[1]);
+  assert.equal(next[2], assets[2]);
 });
