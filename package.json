@@ -8,7 +8,9 @@
     "build:web": "pnpm --dir ./apps/web build",
     "start:web": "pnpm --dir ./apps/web start",
     "dev:api": "echo \"TODO: wire api app runner\"",
-    "test": "echo \"TODO: add test runner\"",
+    "typecheck": "pnpm --dir ./apps/web typecheck",
+    "test": "pnpm --dir ./apps/web test",
+    "check": "pnpm typecheck && pnpm test",
     "harness:validate": "node ./harness/validate.mjs",
     "harness:import:notion": "node ./harness/import-notion.mjs",
     "harness:validate:notion": "node ./harness/validate-notion.mjs"
