@@ -11,6 +11,7 @@ import {
   ChangeEvent,
   FormEvent,
   Fragment,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -54,13 +55,13 @@ import {
   RecognizedHolding,
   recognizeHoldings,
 } from "./holdings";
-import PortfolioBuilder, { stockAssetId, type AssetSelection } from "./PortfolioBuilder";
+import PortfolioBuilder, { stockAssetId, type AssetSelection, type NoticeAction } from "./PortfolioBuilder";
 import UserGuide from "./UserGuide";
 import AccountsManager from "./AccountsManager";
 import {useMeritzSync} from "./use-meritz-sync";
 import { useQuoteRefresh } from "./use-quote-refresh";
 import {publishTradePortfolio} from "./portfolio-cache";
-import { protectUnsavedChanges } from "./unsaved-changes";
+import { isBuilderView, navigationNeedsConfirm, protectUnsavedChanges, shouldConfirmNavigation } from "./unsaved-changes";
 import AccountSettings from "./AccountSettings";
 import ServiceNotices from "./ServiceNotices";
 import { detachPushOnLogout } from "./PushSettings";
@@ -174,37 +175,69 @@ export default function PortfolioPage() {
   }, [view, detailSource]);
   const [editFocus, setEditFocus] = useState<AssetSelection | null>(null);
   const [portfolioDirty, setPortfolioDirty] = useState(false);
-  const navigationState = useRef({ dirty: false, url: "" });
+  const [builderDirty, setBuilderDirty] = useState({ draft: false, screen: false });
+  const [hasSavedPortfolio, setHasSavedPortfolio] = useState<boolean | null>(null);
+  const navigationState = useRef({
+    view: "portfolio" as View,
+    url: "",
+    draftDirty: false,
+    otherDirty: false,
+  });
 
 
   useEffect(() => {
-    function restoreScreen() {
-      const params = new URLSearchParams(window.location.search);
+    function requestedView(params: URLSearchParams): View {
       const requested = params.get("view") as View;
       let next: View = VIEWS.includes(requested) ? requested : "portfolio";
       const noticeId = params.get("notice");
       if (noticeId && (!requested || requested === "notices")) next = "notices";
+      const id = params.get("asset");
+      const kind = params.get("kind");
+      const hasAsset = Boolean(id && (kind === "stock" || kind === "crypto" || kind === "manual" || kind === "candidate"));
+      if (next === "detail" && !hasAsset) next = "holdings";
+      return next;
+    }
+    function restoreScreen() {
+      const params = new URLSearchParams(window.location.search);
+      const next = requestedView(params);
+      const noticeId = params.get("notice");
       setSelectedNoticeId(next === "notices" ? noticeId : null);
       const id = params.get("asset");
       const kind = params.get("kind");
       const asset: AssetSelection | null = id && (kind === "stock" || kind === "crypto" || kind === "manual" || kind === "candidate")
         ? { id, kind } : null;
-      if (next === "detail" && !asset) next = "holdings";
       setSelectedAsset(asset);
       setDetailSource(params.get("source") === "edit" ? "edit" : params.get("source") === "rebalance" ? "rebalance" : params.get("source") === "accounts" ? "accounts" : params.get("source") === "holdings" ? "holdings" : "portfolio");
       setView(next);
+      navigationState.current.view = next;
       setEditFocus(null);
       setEditingHoldingId(null);
       setNotice("");
+      setNoticeAction(null);
       navigationState.current.url = window.location.href;
     }
     function onHistoryChange() {
-      if (navigationState.current.dirty && !window.confirm("저장하지 않은 변경 사항을 버리고 이동할까요?")) {
+      const from = navigationState.current.view;
+      const to = requestedView(new URLSearchParams(window.location.search));
+      if (
+        navigationNeedsConfirm({
+          from,
+          to,
+          draftDirty: navigationState.current.draftDirty,
+          otherDirty: navigationState.current.otherDirty,
+        }) &&
+        !window.confirm("저장하지 않은 변경 사항을 버리고 이동할까요?")
+      ) {
         window.history.pushState(null, "", navigationState.current.url);
         return;
       }
-      navigationState.current.dirty = false;
-      setPortfolioDirty(false);
+      if (from !== to) {
+        setPortfolioDirty(false);
+        setBuilderDirty((state) => ({
+          draft: isBuilderView(from) && isBuilderView(to) ? state.draft : false,
+          screen: false,
+        }));
+      }
       restoreScreen();
     }
     restoreScreen();
@@ -214,6 +247,11 @@ export default function PortfolioPage() {
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState("");
+  const [noticeAction, setNoticeAction] = useState<NoticeAction | null>(null);
+  const showNotice = useCallback((text: string, action: NoticeAction | null = null) => {
+    setNotice(text);
+    setNoticeAction(action);
+  }, []);
   const [broker, setBroker] = useState("메리츠");
   const [account, setAccount] = useState("기본 계좌");
   const [market, setMarket] = useState<Market>("US");
@@ -242,7 +280,8 @@ export default function PortfolioPage() {
   const [pendingHoldingRemoval, setPendingHoldingRemoval] = useState<string | null>(null);
   const editedHolding = holdings.find(row => row.id === editingHoldingId);
   const holdingDirty = Boolean(view === "edit" && !holdingTradeMode && editedHolding && (holdingQuantity !== String(editedHolding.quantity) || holdingCost !== (editedHolding.averageCost === null ? "" : String(editedHolding.averageCost))));
-  const unsavedChanges = portfolioDirty || holdingDirty || holdingTradeDirty || (view === "import" && draft.length > 0);
+  const otherDirty = portfolioDirty || builderDirty.screen || holdingDirty || holdingTradeDirty || (view === "import" && draft.length > 0);
+  const unsavedChanges = portfolioDirty || builderDirty.draft || builderDirty.screen || holdingDirty || holdingTradeDirty || (view === "import" && draft.length > 0);
   const {
     quoteBusy,
     quoteError,
@@ -268,7 +307,10 @@ export default function PortfolioPage() {
       publishTradePortfolio(result.portfolio, "");
     },
   });
-  useEffect(() => { navigationState.current.dirty = unsavedChanges; }, [unsavedChanges]);
+  useEffect(() => {
+    navigationState.current.draftDirty = builderDirty.draft;
+    navigationState.current.otherDirty = otherDirty;
+  }, [builderDirty.draft, otherDirty]);
   useEffect(() => protectUnsavedChanges(window, unsavedChanges), [unsavedChanges]);
 
   const [localAdminOpen, setLocalAdminOpen] = useState(false);
@@ -416,28 +458,40 @@ export default function PortfolioPage() {
     [holdings, filter, search, assetSort,fxEnabled,fxSettings],
   );
 
-  function go(next: View, asset = selectedAsset, source = detailSource, noticeId: string | null = null) {
+  function go(
+    next: View,
+    asset = selectedAsset,
+    source = detailSource,
+    noticeId: string | null = null,
+    options: { skipConfirm?: boolean } = {},
+  ) {
     if (
-      unsavedChanges &&
-      next !== view &&
+      shouldConfirmNavigation({ from: view, to: next, draftDirty: builderDirty.draft, otherDirty, skipConfirm: options.skipConfirm }) &&
       !window.confirm("저장하지 않은 변경 사항을 버리고 이동할까요?")
     )
       return;
-    if (next !== view) setPortfolioDirty(false);
+    if (next !== view) {
+      setPortfolioDirty(false);
+      setBuilderDirty((state) => ({
+        draft: isBuilderView(view) && isBuilderView(next) ? state.draft : false,
+        screen: false,
+      }));
+    }
     if (next !== "edit") {
       setEditFocus(null);
       setEditingHoldingId(null);
     }
     setView(next);
+    navigationState.current.view = next;
     setSelectedNoticeId(next === "notices" ? noticeId : null);
     const url = screenUrl(next, asset, source, noticeId);
     if (url !== `${window.location.pathname}${window.location.search}${window.location.hash}`) {
       window.history.pushState(null, "", url);
     }
     navigationState.current.url = window.location.href;
-    if (next !== view) navigationState.current.dirty = false;
     if (next !== view || (next === "notices" && noticeId !== selectedNoticeId)) window.scrollTo({ top: 0, behavior: "instant" });
     setNotice("");
+    setNoticeAction(null);
   }
 
   function openAsset(asset: AssetSelection, source: "portfolio" | "holdings" | "accounts" | "rebalance" | "edit") {
@@ -687,6 +741,17 @@ export default function PortfolioPage() {
     }
   }
 
+  async function fetchPortfolioPresence(): Promise<boolean> {
+    try {
+      const response = await fetch("/api/portfolio", { cache: "no-store" });
+      if (!response.ok) return true;
+      const payload = (await response.json()) as { portfolio?: unknown };
+      return Boolean(payload.portfolio);
+    } catch {
+      return true;
+    }
+  }
+
   async function saveDraft() {
     if (!broker.trim() || !account.trim()) {
       setNotice("증권사와 계좌 이름을 입력해 주세요.");
@@ -745,8 +810,10 @@ export default function PortfolioPage() {
       );
       setHoldings(result.holdings);
       setDraft([]);
-      go("holdings");
-      setNotice(`${incoming.length}개 종목을 저장했습니다.`);
+      const hasPortfolio = hasSavedPortfolio !== null ? hasSavedPortfolio : await fetchPortfolioPresence();
+      go("holdings", selectedAsset, detailSource, null, { skipConfirm: true });
+      if (hasPortfolio) showNotice(`${incoming.length}개 종목을 저장했습니다.`);
+      else showNotice(`${incoming.length}개 종목을 저장했습니다. 이제 목표 비중을 정하면 현재 비중과 비교할 수 있습니다.`, { label: "목표 비중 정하기", view: "strategy" });
     } catch (error) {
       setNotice(
         error instanceof Error ? error.message : "저장하지 못했습니다.",
@@ -822,7 +889,6 @@ export default function PortfolioPage() {
             <span className={styles.logo}>PR</span> PortRhythm
           </div>
           <div className={styles.authPitch}>
-            <span className={styles.kicker}>PORTRHYTHM · YOUR ALLOCATION</span>
             <h1>
               투자는
               <br />나만의 리듬으로.
@@ -832,40 +898,26 @@ export default function PortfolioPage() {
               목표 비중을 직접 설계하고 국내·미국 종목을 연결하세요. 현재 비중과
               목표의 차이, 다음 조정이 필요한 자산까지 한눈에 볼 수 있습니다.
             </p>
-            <div className={styles.authGraphic}>
-              <div className={styles.authGraphicHead}>
-                <span>PORTFOLIO BLUEPRINT</span>
-                <strong>목표 비중 예시</strong>
-              </div>
-              <div className={styles.authGraphicBody}>
-                <div
-                  className={styles.authPreviewRing}
-                  aria-label="미국 지수 35%, 한국 지수 25%, 우량주 20%, 금 10%, 비트코인 10%"
-                >
-                  <span>
-                    나만의 기준<strong>100%</strong>
-                  </span>
-                </div>
-                <div className={styles.authPreviewLegend}>
-                  <span>
-                    <i />
-                    미국 지수 <b>35%</b>
-                  </span>
-                  <span>
-                    <i />
-                    한국 지수 <b>25%</b>
-                  </span>
-                  <span>
-                    <i />
-                    우량주 <b>20%</b>
-                  </span>
-                  <span>
-                    <i />
-                    금·비트코인 <b>20%</b>
-                  </span>
+            <figure className={styles.authDrift} aria-label="예시: 미국 지수 목표 35%, 현재 52%, 17%p 초과">
+              <figcaption>목표와 현재가 얼마나 어긋났는지 봅니다</figcaption>
+              <div className={styles.authDriftFocus}>
+                <span>미국 지수</span>
+                <dl>
+                  <div><dt>목표</dt><dd>35%</dd></div>
+                  <div><dt>현재</dt><dd>52%</dd></div>
+                </dl>
+                <strong>+17%p</strong>
+                <div className={styles.authDriftBar} aria-hidden="true">
+                  <i style={{ width: "52%" }} />
+                  <b style={{ left: "35%" }} />
                 </div>
               </div>
-            </div>
+              <ul className={styles.authDriftRows}>
+                <li><span>한국 지수</span><span>목표 25%</span><span>현재 15%</span><span>−10%p</span></li>
+                <li><span>우량주</span><span>목표 20%</span><span>현재 18%</span><span>−2%p</span></li>
+                <li><span>금·비트코인</span><span>목표 20%</span><span>현재 15%</span><span>−5%p</span></li>
+              </ul>
+            </figure>
             <a
               className={styles.authQuote}
               href="https://www.berkshirehathaway.com/letters/1988.html"
@@ -876,11 +928,9 @@ export default function PortfolioPage() {
               <small>워런 버핏 · 버크셔 해서웨이 1988 주주서한</small>
             </a>
           </div>
-          <small>PORTRHYTHM · 나만의 투자 비중</small>
         </section>
         <section className={styles.authForm}>
           <div>
-            <span className={styles.kicker}>START WITH A PLAN</span>
             <h2>내 투자 기준을 세워보세요</h2>
             <p>
               보유 자산을 정리하고, 목표 비중에 맞는 투자 결정을 준비하세요.
@@ -903,13 +953,13 @@ export default function PortfolioPage() {
               className={styles.kakao}
               onClick={() => signIn("kakao", { callbackUrl: noticeReturnPath(window.location.href) })}
             >
-              <b>K</b> 카카오로 계속하기 <ArrowRight size={17} />
+              <b>K</b> 카카오로 계속하기
             </button>
             <button
               className={styles.naver}
               onClick={() => signIn("naver", { callbackUrl: noticeReturnPath(window.location.href) })}
             >
-              <b>N</b> 네이버로 계속하기 <ArrowRight size={17} />
+              <b>N</b> 네이버로 계속하기
             </button>
             {process.env.NODE_ENV === "development" && (
               <div className={styles.localAdminAccess}>
@@ -1132,7 +1182,7 @@ export default function PortfolioPage() {
           )}
           {view === "accounts" && <AccountsManager onCashManage={()=>go("edit")} userId={session.user?.appUserId ?? ""} holdings={holdings} onHoldings={(rows)=>{setHoldings(rows);bumpQuoteVersion();}} onNotice={setNotice} onDirty={setPortfolioDirty} onOpenAsset={row=>openAsset({id:`holding:${row.id}`,kind:"stock"},"accounts")} onRefreshQuotes={()=>void refreshQuotes(true)} />}
           {view === "guide" && <UserGuide onNavigate={go} />}
-          {view === "portfolio" && showStartGuide && (
+          {view === "portfolio" && showStartGuide && hasSavedPortfolio === true && (
             <section className={styles.startGuide} aria-label="처음 시작 안내">
               <CircleHelp size={21} />
               <div><strong>목표 비중을 정하고 자산을 연결해 보세요.</strong><p>목표 설계 → 자산 등록 → 배정 → 비중 점검</p></div>
@@ -1169,7 +1219,12 @@ export default function PortfolioPage() {
             <div className={styles.notice} role="status">
               <CircleHelp size={17} />
               <span>{notice}</span>
-              <button aria-label="알림 닫기" onClick={() => setNotice("")}>
+              {noticeAction && (
+                <button type="button" className={styles.noticeAction} onClick={() => go(noticeAction.view)}>
+                  {noticeAction.label} <ArrowRight size={15} />
+                </button>
+              )}
+              <button aria-label="알림 닫기" onClick={() => { setNotice(""); setNoticeAction(null); }}>
                 <X size={17} />
               </button>
             </div>
@@ -1182,7 +1237,7 @@ export default function PortfolioPage() {
                 계정으로 옮기면 다른 브라우저에서도 볼 수 있습니다.
               </span>
               <button disabled={busy} onClick={migrateLegacy}>
-                계정으로 이전 <ArrowRight size={15} />
+                계정으로 이전
               </button>
             </div>
           )}
@@ -1220,7 +1275,7 @@ export default function PortfolioPage() {
               onDailyCryptoQuotes={setDailyCryptoQuotes}
               quoteVersion={quoteVersion}
               onHoldings={setHoldings}
-              onNotice={setNotice}
+              onNotice={showNotice}
               onRefreshQuotes={refreshQuotes}
               quotesRefreshing={quoteBusy}
               quoteError={quoteError}
@@ -1231,7 +1286,9 @@ export default function PortfolioPage() {
               detailBackLabel={detailSource === "rebalance" ? "리밸런싱으로" : detailSource === "edit" ? "자산 수정으로" : "이전 화면"}
               onBack={() => go(detailSource)}
               onNavigate={go}
-              onDirtyChange={setPortfolioDirty}
+              onDirtyChange={setBuilderDirty}
+              onPortfolioPresence={setHasSavedPortfolio}
+              onNoticeAction={showNotice}
             />
           )}
           {(view === "holdings" || view === "edit") && (
@@ -1421,7 +1478,7 @@ export default function PortfolioPage() {
                                 setHoldings(withPreviousQuotes(next, holdings));
                                 setEditingHoldingId(null);setNotice(message);
                               }} /> : <>
-                            <p className={styles.editStatus} role="status">미저장 · 이 종목만 수정 후 저장하세요.</p>
+                            <p className={styles.editStatus} role="status">저장하지 않은 변경이 있습니다. 이 종목만 수정한 뒤 저장하세요.</p>
                             <div className={styles.editTitle}>
                               <strong>{row.name}</strong>
                               <span>
@@ -1540,7 +1597,7 @@ export default function PortfolioPage() {
                   onDailyCryptoQuotes={setDailyCryptoQuotes}
                   quoteVersion={quoteVersion}
                   onHoldings={setHoldings}
-                  onNotice={setNotice}
+                  onNotice={showNotice}
                   onRefreshQuotes={refreshQuotes}
                   quotesRefreshing={quoteBusy}
                   quoteError={quoteError}
@@ -1548,10 +1605,12 @@ export default function PortfolioPage() {
                   onEditHoldings={() => go("edit")}
                   selectedAsset={selectedAsset}
                   onSelectAsset={(asset) => openAsset(asset, "edit")}
-                      onBack={() => go(detailSource)}
+                  onBack={() => go(detailSource)}
                   focusAsset={editFocus}
                   onNavigate={go}
-                  onDirtyChange={setPortfolioDirty}
+                  onDirtyChange={setBuilderDirty}
+                  onPortfolioPresence={setHasSavedPortfolio}
+                  onNoticeAction={showNotice}
                 />
               )}
               {(totals.costKnown.KR + totals.costKnown.US < holdings.length || totals.missing > 0) && <p className={styles.footnote}>
@@ -1809,7 +1868,7 @@ export default function PortfolioPage() {
                         disabled={busy}
                         onClick={saveDraft}
                       >
-                        확인하고 저장 <ArrowRight size={17} />
+                        확인하고 저장
                       </button>
                     </div>
                   </>

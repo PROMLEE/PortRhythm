@@ -22,7 +22,7 @@
   font: inherit;
   text-align: left;
   cursor: pointer;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
 }
 .main:hover:not(:disabled),
 .active .main {
@@ -139,7 +139,7 @@
   height: 36px;
   cursor: pointer;
   color: var(--muted);
-  border-radius: 50%;
+  border-radius: var(--radius-round);
 }
 .more summary::-webkit-details-marker {
   display: none;
@@ -160,7 +160,7 @@
   padding: 6px;
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   box-shadow: 0 8px 28px #102f3b1a;
 }
 .menu button {
@@ -172,7 +172,7 @@
   border: 0;
   background: transparent;
   color: var(--ink);
-  border-radius: 7px;
+  border-radius: var(--radius-sm);
   padding: 10px 12px;
   font: inherit;
   font-size: 13px;

@@ -33,7 +33,7 @@
   font-size: 14px;
   padding: 10px 14px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--action-fill);
   color: var(--action-ink);
   white-space: nowrap;
@@ -99,7 +99,7 @@
 .feedback {
   padding: 12px 14px;
   background: var(--soft);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   color: var(--ink) !important;
   font-size: 13px;
   line-height: 1.7;

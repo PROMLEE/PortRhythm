@@ -10,7 +10,7 @@
   font: inherit;
   font-size: 14px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--ink);
   padding: 11px 13px;
@@ -108,7 +108,7 @@
   color: var(--muted);
   background: var(--soft);
   padding: 4px 7px;
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   margin-right: 5px;
 }
 .editor {
@@ -117,7 +117,7 @@
   background: var(--surface);
   padding: 24px;
   margin: 20px 0;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
 }
 .editor label {
   display: grid;
@@ -166,13 +166,13 @@
   color: #b74444 !important;
   background: var(--soft);
   padding: 14px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 .success {
   color: var(--blue) !important;
   padding: 14px;
   background: var(--soft);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 @media (max-width: 600px) {
   .console {

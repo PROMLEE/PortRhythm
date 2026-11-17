@@ -46,7 +46,7 @@
 .option select {
   min-height: 40px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 8px 12px;
   background: var(--surface);
   color: var(--ink);
@@ -66,7 +66,7 @@
 .actions button {
   min-height: 44px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 10px 14px;
   background: var(--soft);
   color: var(--blue);

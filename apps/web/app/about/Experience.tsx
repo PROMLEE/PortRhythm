@@ -1,24 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import styles from "./about.module.css";
 
 export default function Experience({ children }: { children: ReactNode }) {
-  const root = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || !root.current) return;
-    const observer = new IntersectionObserver((entries) => {
-      for (const entry of entries) {
-        if (entry.isIntersecting) {
-          (entry.target as HTMLElement).dataset.visible = "true";
-          observer.unobserve(entry.target);
-        }
-      }
-    }, { threshold: 0.12 });
-    root.current.querySelectorAll("[data-reveal]").forEach((element) => observer.observe(element));
-    return () => observer.disconnect();
-  }, []);
-  return <div ref={root}>{children}</div>;
+  return <div>{children}</div>;
 }
 
 export function RebalanceDemo() {
@@ -38,7 +24,6 @@ export function RebalanceDemo() {
         <div className={styles.legend}><span><i />자산 A {weight}%</span><span><i />자산 B {100 - weight}%</span></div>
       </div>
       <div className={styles.demoControls}>
-        <span className={styles.eyebrow}>비중이 달라지면, 조정도 달라집니다</span>
         <h3>슬라이더로 직접 확인해보세요.</h3>
         <p>총 평가액 1,000만원, 두 자산의 목표 비중이 각각 50%인 예시입니다.</p>
         <label htmlFor="demo-weight">자산 A의 현재 비중 <strong>{weight}%</strong></label>

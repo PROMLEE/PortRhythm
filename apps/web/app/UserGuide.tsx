@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowDown, ArrowRight, Check, ChevronRight } from "lucide-react";
 import styles from "./UserGuide.module.css";
 
@@ -111,19 +111,6 @@ export default function UserGuide({
     const root = guideRef.current;
     if (!root) return;
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const reveals = root.querySelectorAll<HTMLElement>("[data-reveal]");
-    const revealObserver = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            (entry.target as HTMLElement).dataset.visible = "true";
-            revealObserver.unobserve(entry.target);
-          }
-        });
-      },
-      { threshold: 0.08 },
-    );
-    reveals.forEach((element) => revealObserver.observe(element));
     let frame = 0;
     const update = () => {
       frame = 0;
@@ -172,7 +159,6 @@ export default function UserGuide({
     window.addEventListener("resize", onScroll);
     motion.addEventListener("change", onMotionChange);
     return () => {
-      revealObserver.disconnect();
       cancelAnimationFrame(frame);
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
@@ -191,8 +177,7 @@ export default function UserGuide({
   return (
     <article ref={guideRef} className={styles.guide}>
       <header className={styles.hero}>
-        <div className={styles.heroCopy} data-reveal>
-          <span>PORTRHYTHM GUIDE</span>
+        <div className={styles.heroCopy}>
           <h1>
             내 포트폴리오의
             <br />첫 리듬을 만들어보세요
@@ -210,85 +195,6 @@ export default function UserGuide({
           <a className={styles.scrollCue} href="#guide-start">
             <ArrowDown size={16} /> 아래로 내려 첫 리듬 시작하기
           </a>
-        </div>
-        <div
-          className={styles.blueprint}
-          data-reveal
-          aria-label="목표 비중 예시: 미국 지수 35%, 한국 지수 25%, 우량주 20%, 금 10%, 비트코인 10%"
-        >
-          <span className={styles.blueprintLabel}>MY PORTFOLIO RHYTHM</span>
-          <div className={styles.ring}>
-            <svg viewBox="0 0 120 120" aria-hidden="true">
-              <circle
-                cx="60"
-                cy="60"
-                r="48"
-                fill="none"
-                stroke="var(--line)"
-                strokeWidth="10"
-              />
-              {[35, 25, 20, 10, 10].map((weight, index, values) => (
-                <circle
-                  key={index}
-                  className={styles.ringSegment}
-                  cx="60"
-                  cy="60"
-                  r="48"
-                  pathLength="100"
-                  fill="none"
-                  stroke={
-                    ["#177c88", "#42a994", "#6986b3", "#cba664", "#d88975"][
-                      index
-                    ]
-                  }
-                  strokeWidth="10"
-                  strokeDasharray={`${weight - 1.2} ${100 - weight + 1.2}`}
-                  strokeDashoffset={
-                    -values
-                      .slice(0, index)
-                      .reduce((sum, value) => sum + value, 0)
-                  }
-                  style={
-                    {
-                      "--segment": `${weight - 1.2} ${100 - weight + 1.2}`,
-                      "--delay": `${index * 90}ms`,
-                    } as CSSProperties
-                  }
-                />
-              ))}
-            </svg>
-            <div>
-              <small>나만의 기준</small>
-              <strong>
-                100<span>%</span>
-              </strong>
-              <small>목표 비중 예시</small>
-            </div>
-          </div>
-          <div className={styles.rhythmLegend}>
-            {[
-              "미국 지수 35%",
-              "한국 지수 25%",
-              "우량주 20%",
-              "금 10%",
-              "비트코인 10%",
-            ].map((label, index) => (
-              <span key={label}>
-                <i
-                  style={{
-                    background: [
-                      "#177c88",
-                      "#42a994",
-                      "#6986b3",
-                      "#cba664",
-                      "#d88975",
-                    ][index],
-                  }}
-                />
-                {label}
-              </span>
-            ))}
-          </div>
         </div>
       </header>
       <nav className={styles.chapterNav} aria-label="가이드 목차">
@@ -309,14 +215,10 @@ export default function UserGuide({
         ))}
       </nav>
       <section id="guide-start" data-chapter className={styles.section}>
-        <h2 data-reveal>처음 시작하는 5단계</h2>
+        <h2>처음 시작하는 5단계</h2>
         <ol className={styles.steps} data-timeline>
           {steps.map((step, index) => (
-            <li
-              key={step.destination}
-              data-reveal
-              style={{ "--delay": `${index * 40}ms` } as CSSProperties}
-            >
+            <li key={step.destination}>
               <span className={styles.number}>{index + 1}</span>
               <div>
                 <h3>{step.title}</h3>
@@ -326,7 +228,7 @@ export default function UserGuide({
             </li>
           ))}
         </ol>
-        <figure data-reveal className={styles.screenReveal}>
+        <figure>
           <img
             src="/guide/desktop-composition.jpg"
             width="1280"
@@ -338,7 +240,7 @@ export default function UserGuide({
         </figure>
       </section>
       <section id="guide-edit" data-chapter className={styles.section}>
-        <h2 data-reveal>거래 후에는 여기서 수정하세요</h2>
+        <h2>거래 후에는 여기서 수정하세요</h2>
         <p>
           대시보드에서 자산을 누르면 상세 화면에서 해당 자산을 바로 수정하고 저장할 수 있습니다.
         </p>
@@ -363,7 +265,7 @@ export default function UserGuide({
           </li>
         </ul>
         {action("edit", "자산 수정으로 이동")}
-        <figure data-reveal className={styles.screenReveal}>
+        <figure>
           <img
             src="/guide/desktop-asset-edit.jpg"
             width="1265"
@@ -375,12 +277,12 @@ export default function UserGuide({
         </figure>
       </section>
       <section id="guide-rebalance" data-chapter className={styles.section}>
-        <h2 data-reveal>목표와 달라졌다면, 조정 방법 비교하기</h2>
+        <h2>목표와 달라졌다면, 조정 방법 비교하기</h2>
         <p>
           매수·매도 수량과 모든 제안을 반영한 예상 비중을 함께 확인하세요.
           주식은 1주, 가상자산은 소수점 8자리 단위로 계산합니다.
         </p>
-        <figure data-reveal className={styles.screenReveal}>
+        <figure>
           <img
             src="/guide/desktop-rebalance.jpg"
             width="1265"
@@ -395,7 +297,7 @@ export default function UserGuide({
         </figure>
       </section>
       <section id="guide-faq" data-chapter className={styles.section}>
-        <h2 data-reveal>자주 묻는 질문</h2>
+        <h2>자주 묻는 질문</h2>
         {questions.map(([question, answer]) => (
           <details key={question} className={styles.question}>
             <summary>
@@ -415,7 +317,7 @@ export default function UserGuide({
           {calculatorLoaded && <AveragePriceCalculator />}
         </details>
       </section>
-      <footer data-reveal className={styles.end}>
+      <footer className={styles.end}>
         <strong>투자는 나만의 리듬으로. 내 기준을 지키며, 꾸준히.</strong>
         <p>현재 보유 자산을 확인한 후 목표 비중을 정해보세요.</p>
         {onNavigate ? (

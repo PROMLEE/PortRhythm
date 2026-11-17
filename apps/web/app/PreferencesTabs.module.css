@@ -8,7 +8,7 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 4px;
   padding: 4px;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: var(--soft);
   margin-bottom: 28px;
 }
@@ -20,7 +20,7 @@
   min-height: 46px;
   padding: 10px 8px;
   border: 0;
-  border-radius: 9px;
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--muted);
   font: inherit;
@@ -68,7 +68,7 @@
 .unsaved {
   width: 6px;
   height: 6px;
-  border-radius: 50%;
+  border-radius: var(--radius-round);
   background: var(--blue);
   position: absolute;
   right: 8px;
@@ -86,7 +86,7 @@
     gap: 2px;
     padding: 3px;
     margin-bottom: 24px;
-    border-radius: 10px;
+    border-radius: var(--radius-md);
   }
   .tabs button {
     min-height: 44px;

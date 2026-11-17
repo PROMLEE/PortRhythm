@@ -50,7 +50,7 @@
   background: var(--soft);
   color: var(--ink);
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   min-height: 46px;
   padding: 10px 12px;
   font: inherit;
@@ -73,7 +73,7 @@
 .footer button {
   min-height: 44px;
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   padding: 10px 16px;
   font: inherit;
   font-size: 14px;

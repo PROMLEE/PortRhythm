@@ -1148,8 +1148,7 @@ export default function AccountsManager({
       )}
       {dirty && (
         <p className={styles.status} role="status">
-          미저장 ·{" "}
-          {[
+          저장하지 않은 변경이 있습니다: {[
             createDirty && "새 계좌 입력",
             accountDirty && "계좌 정보 변경",
             stockDirty && (editingId ? "보유 종목 수정" : "종목 추가 입력"),
@@ -1157,7 +1156,7 @@ export default function AccountsManager({
             pendingMove && "계좌 이동 확인",
           ]
             .filter(Boolean)
-            .join(" · ")}
+            .join(", ")}.
         </p>
       )}
     </section>
