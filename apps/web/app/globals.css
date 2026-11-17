@@ -13,6 +13,10 @@
   --hover: #edf1f5;
   --positive: #c74156;
   --negative: #2d6dc6;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-round: 50%;
+  --radius-pill: 999px;
 }
 
 html[data-theme="dark"] {

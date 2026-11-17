@@ -20,7 +20,7 @@
   width: 100%;
   min-width: 0;
   border: 1px solid var(--line);
-  border-radius: 9px;
+  border-radius: var(--radius-md);
   padding: 12px;
   background: var(--surface);
   color: var(--ink);
@@ -54,14 +54,14 @@
   display: flex;
   gap: 4px;
   padding: 4px;
-  border-radius: 9px;
+  border-radius: var(--radius-md);
   background: var(--soft);
 }
 .modes button {
   flex: 1;
   padding: 8px 4px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--muted);
   font-size: 12px;
@@ -201,7 +201,7 @@
 .cashButtons button {
   flex: 1;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 9px 6px;
   color: var(--blue);
   background: var(--surface);

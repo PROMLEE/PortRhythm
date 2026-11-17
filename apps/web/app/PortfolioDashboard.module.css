@@ -92,7 +92,7 @@
   gap: 8px;
   min-height: 42px;
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   padding: 10px 13px;
   background: var(--soft);
   color: var(--ink);
@@ -184,7 +184,7 @@
   border: 0;
   background: var(--action-fill);
   color: var(--action-ink);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   padding: 13px 16px;
   font-size: 14px;
   font-weight: 650;

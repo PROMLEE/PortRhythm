@@ -10,7 +10,7 @@
   width: max-content;
   max-width: calc(100vw - 32px);
   padding: 14px 18px;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: var(--surface);
   color: var(--ink);
   box-shadow: 0 4px 24px #102f3b26;
@@ -19,7 +19,7 @@
 }
 .recovery button {
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 8px 12px;
   background: var(--soft);
   color: var(--blue);
