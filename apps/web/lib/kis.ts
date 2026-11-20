@@ -9,6 +9,8 @@ import {
 import type { Market } from "../app/holdings";
 import { db } from "./db";
 import { domesticPreviousClose } from "./kis-quote-values";
+import { compactDate, parseIndexRows, previousDay } from "./index-history";
+import type { DrawdownIndex, IndexClose } from "../app/drawdown";
 
 const BASE =
   process.env.KIS_BASE_URL ?? "https://openapi.koreainvestment.com:9443";
@@ -202,6 +204,14 @@ async function kisGet(
   trId: string,
   params: Record<string, string>,
 ) {
+  return (await kisRequest(path, trId, params)).output ?? {};
+}
+
+async function kisRequest(
+  path: string,
+  trId: string,
+  params: Record<string, string>,
+) {
   const url = new URL(path, BASE);
   Object.entries(params).forEach(([key, value]) =>
     url.searchParams.set(key, value),
@@ -225,8 +235,9 @@ async function kisGet(
       msg_cd?: string;
       msg1?: string;
       output?: Record<string, unknown>;
+      output2?: unknown;
     };
-    if (response.ok && payload.rt_cd === "0") return payload.output ?? {};
+    if (response.ok && payload.rt_cd === "0") return payload;
     const rateLimited =
       payload.msg_cd === "EGW00201" || payload.msg1?.includes("초당 거래건수");
     if (rateLimited && attempt < 2) {
@@ -429,4 +440,36 @@ export async function domesticTradingCalendar(date: string): Promise<unknown> {
     CTX_AREA_FK: "",
     CTX_AREA_NK: "",
   });
+}
+
+/** Daily closes for an overseas index between two dates, newest pages first. */
+export async function indexDailyCloses(
+  index: DrawdownIndex,
+  from: string,
+  to: string,
+): Promise<IndexClose[]> {
+  requireConfiguration();
+  const rows = new Map<string, IndexClose>();
+  let end = to;
+  // Each response holds a limited number of rows; walk backwards until the range is covered.
+  for (let page = 0; page < 5 && end >= from; page++) {
+    const payload = await kisRequest(
+      "/uapi/overseas-price/v1/quotations/inquire-daily-chartprice",
+      "FHKST03030100",
+      {
+        FID_COND_MRKT_DIV_CODE: "N",
+        FID_INPUT_ISCD: index,
+        FID_INPUT_DATE_1: compactDate(from),
+        FID_INPUT_DATE_2: compactDate(end),
+        FID_PERIOD_DIV_CODE: "D",
+      },
+    );
+    const batch = parseIndexRows(payload.output2);
+    if (!batch.length) break;
+    batch.forEach((row) => rows.set(row.date, row));
+    const earliest = batch.reduce((min, row) => (row.date < min ? row.date : min), batch[0].date);
+    if (earliest <= from) break;
+    end = previousDay(earliest);
+  }
+  return [...rows.values()].sort((a, b) => a.date.localeCompare(b.date));
 }

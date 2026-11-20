@@ -214,8 +214,14 @@
     font-size: 38px;
   }
 }
+.marketInline {
+  display: none;
+}
 @media (max-width: 1000px) {
   .dashboard {
+    display: block;
+  }
+  .marketInline {
     display: block;
   }
   .aside {
