@@ -1,0 +1,4 @@
+.strategy { min-width: 0; }
+.strategy > .tabs { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 20px; }
+.panel { display: grid; gap: 20px; min-width: 0; }
+.panel[hidden] { display: none; }

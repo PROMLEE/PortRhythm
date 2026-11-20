@@ -44,7 +44,8 @@ import SaveStatus from "./SaveStatus";
 import DrawdownStages, { DrawdownNotice } from "./DrawdownStages";
 import { useIndexDrawdown, useIndexOverview } from "./use-index-drawdown";
 import IndexOverview from "./IndexOverview";
-import { pruneDrawdownPlan } from "./drawdown";
+import StrategyTabs, { type StrategyTab } from "./StrategyTabs";
+import { pruneDrawdownPlan, stageTotal } from "./drawdown";
 import {
   EXAMPLE_BUCKETS,
   EXAMPLE_RULES,
@@ -776,9 +777,14 @@ export default function PortfolioBuilder({
   useEffect(()=>{let active=true;setPreviousFx(null);if(draft?.includeFxGains && draft.usdKrwMode === "auto") void fetch("/api/portfolio/fx").then(r=>r.json()).then(p=>{if(active && p.previousRate && p.rateDate)setPreviousFx({rate:p.previousRate,rateDate:p.rateDate});}).catch(()=>{});return()=>{active=false;};},[draft?.includeFxGains,draft?.usdKrwMode,draft?.usdKrwRateDate]);
   const dailyFxRate=draft?.usdKrwMode === "auto" && previousFx?.rateDate === draft?.usdKrwRateDate?previousFx?.rate??null:null;
   const marketSession = useMarketSession(screen === "rebalance" && showRunPreview, userId);
+  const [strategyTab, setStrategyTab] = useState<StrategyTab>("targets");
   const drawdownPlan = draft?.drawdownPlan ?? null;
+  const drawdownNeedsFix = Boolean(
+    drawdownPlan?.enabled && draft &&
+      drawdownPlan.stages.some((stage) => Math.abs(stageTotal(stage, draft.buckets) - 100) > 0.05),
+  );
   const indexDrawdown = useIndexDrawdown(
-    drawdownPlan && (screen === "strategy" || (screen === "dashboard" && drawdownPlan.enabled))
+    drawdownPlan && ((screen === "strategy" && strategyTab === "drawdown") || (screen === "dashboard" && drawdownPlan.enabled))
       ? drawdownPlan.index
       : null,
   );
@@ -997,6 +1003,7 @@ export default function PortfolioBuilder({
     change(plan);
     setRuleBucketId(plan.buckets[0].id);
     setManualBucketId(plan.buckets[0].id);
+    setStrategyTab("targets");
     if (screen !== "strategy") onNavigate("strategy");
   }
   function editBucket(id: string, key: keyof Bucket, value: string) {
@@ -1904,12 +1911,12 @@ export default function PortfolioBuilder({
         />
       )}
 
-      {screen === "dashboard" && <DrawdownNotice portfolio={draft} drawdown={indexDrawdown} onReview={() => onNavigate("strategy")} />}
       {screen === "dashboard" && <PortfolioDashboard
         total={values?.total ?? 0} gain={displayedGain} percent={displayedGainPercent} gainView={gainView} gainNote={displayedGainNote}
         refreshing={refreshing || quotesRefreshing} onRefresh={refresh} controls={dashboardControls}
         onEdit={onEditHoldings} onHistory={()=>onNavigate("history")} onComposition={()=>onNavigate("composition")} onRebalance={()=>onNavigate("rebalance")}
         composition={<PortfolioVisuals portfolio={draft} holdings={holdings}/>}
+        notice={<DrawdownNotice portfolio={draft} drawdown={indexDrawdown} onReview={() => { setStrategyTab("drawdown"); onNavigate("strategy"); }} />}
         market={<IndexOverview overview={indexOverview} plan={draft.drawdownPlan ?? null} />}
         targetTitle={rebalanceReady ? driftItems.length ? `${driftItems.length}개 포트 조정 필요` : "목표 범위 안에 있어요" : "배정·가격 확인 필요"}
         targetDetail={!rebalanceReady ? "미분류 자산과 시세를 확인하세요." : driftItems.length ? "정해둔 목표와 현재 비중의 차이를 확인하세요." : "다음 점검 때도 나의 투자 원칙을 이어가세요."}
@@ -1984,7 +1991,15 @@ export default function PortfolioBuilder({
       )}
 
       {screen === "strategy" && (
-        <>
+        <StrategyTabs
+          active={strategyTab}
+          onChange={setStrategyTab}
+          attention={{
+            targets: targetTotal === 100 ? undefined : "목표 합계가 100%가 아닙니다",
+            drawdown: drawdownNeedsFix ? "합계가 100%가 아닌 하락 단계가 있습니다" : undefined,
+          }}
+          panels={{
+            targets: (
           <section className={styles.panel}>
             <div className={styles.panelHead}>
               <div>
@@ -2102,7 +2117,9 @@ export default function PortfolioBuilder({
                 : " · 저장하려면 100%로 맞춰 주세요."}
             </p>
           </section>
-          <DrawdownStages portfolio={draft} drawdown={indexDrawdown} onChange={change} onNotice={onNotice} />
+            ),
+            drawdown: <DrawdownStages portfolio={draft} drawdown={indexDrawdown} onChange={change} onNotice={onNotice} />,
+            calculation: (
           <section className={styles.panel}>
             <div className={styles.panelHead}><h2>리밸런싱 계산 설정</h2></div>
             <p className={styles.help}>이번 계산에 적용됩니다. 추가 투입금과 조정할 종목은 리밸런싱에서 선택하세요.</p>
@@ -2210,7 +2227,9 @@ export default function PortfolioBuilder({
 
             <button type="button" className={styles.ghost} onClick={() => onNavigate("rebalance")}>리밸런싱 제안 보기 <ArrowRight size={15} /></button>
           </section>
-        </>
+            ),
+          }}
+        />
       )}
       {(screen === "allocation" || screen === "edit") && (
         <>
