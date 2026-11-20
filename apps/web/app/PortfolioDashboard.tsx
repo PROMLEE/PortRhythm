@@ -27,6 +27,7 @@ export default function PortfolioDashboard({
   onEdit,
   metadata,
   market,
+  notice,
 }: {
   total: number;
   gain: number | null;
@@ -43,6 +44,7 @@ export default function PortfolioDashboard({
   onRebalance: () => void;
   onComposition: () => void;
   market?: ReactNode;
+  notice?: ReactNode;
   onHistory: () => void;
   onEdit: () => void;
   metadata: ReactNode;
@@ -88,6 +90,7 @@ export default function PortfolioDashboard({
             )}
           </div>
           {gainNote && <p className={styles.note}>{gainNote}</p>}
+          {notice}
           <div className={styles.shortcuts}>
             <button type="button" onClick={onComposition}>
               <PieChart size={17} />
@@ -101,7 +104,6 @@ export default function PortfolioDashboard({
             </button>
           </div>
         </section>
-        {market && <div className={styles.marketInline}>{market}</div>}
         <section className={styles.assets} aria-label="보유 자산">
           <div className={styles.assetHeading}>
             <h2>보유 자산</h2>
@@ -113,6 +115,7 @@ export default function PortfolioDashboard({
           <div className={styles.controls}>{controls}</div>
           {children}
         </section>
+        {market && <div className={styles.marketInline}>{market}</div>}
         <div className={styles.metadata}>{metadata}</div>
       </div>
       <aside className={styles.aside} aria-label="포트폴리오 점검">
