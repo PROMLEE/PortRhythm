@@ -9,7 +9,7 @@ import {
 import type { Market } from "../app/holdings";
 import { db } from "./db";
 import { domesticPreviousClose } from "./kis-quote-values";
-import { compactDate, parseIndexRows, previousDay } from "./index-history";
+import { compactDate, parseIndexRows, previousDay, withoutUnclosedKoreanSession } from "./index-history";
 import type { DrawdownIndex, IndexClose } from "../app/drawdown";
 
 const BASE =
@@ -442,34 +442,48 @@ export async function domesticTradingCalendar(date: string): Promise<unknown> {
   });
 }
 
-/** Daily closes for an overseas index between two dates, newest pages first. */
+/** Daily closes for an index between two dates, walking back page by page (newest first). */
 export async function indexDailyCloses(
   index: DrawdownIndex,
   from: string,
   to: string,
 ): Promise<IndexClose[]> {
   requireConfiguration();
+  const domestic = index === "KOSPI";
   const rows = new Map<string, IndexClose>();
   let end = to;
-  // Each response holds a limited number of rows; walk backwards until the range is covered.
-  for (let page = 0; page < 5 && end >= from; page++) {
-    const payload = await kisRequest(
-      "/uapi/overseas-price/v1/quotations/inquire-daily-chartprice",
-      "FHKST03030100",
-      {
-        FID_COND_MRKT_DIV_CODE: "N",
-        FID_INPUT_ISCD: index,
-        FID_INPUT_DATE_1: compactDate(from),
-        FID_INPUT_DATE_2: compactDate(end),
-        FID_PERIOD_DIV_CODE: "D",
-      },
-    );
-    const batch = parseIndexRows(payload.output2);
+  // Overseas pages hold 100 rows and domestic ones 50, so a year takes up to about 6 pages.
+  for (let page = 0; page < 9 && end >= from; page++) {
+    const payload = domestic
+      ? await kisRequest(
+          "/uapi/domestic-stock/v1/quotations/inquire-daily-indexchartprice",
+          "FHKUP03500100",
+          {
+            FID_COND_MRKT_DIV_CODE: "U",
+            FID_INPUT_ISCD: "0001",
+            FID_INPUT_DATE_1: compactDate(from),
+            FID_INPUT_DATE_2: compactDate(end),
+            FID_PERIOD_DIV_CODE: "D",
+          },
+        )
+      : await kisRequest(
+          "/uapi/overseas-price/v1/quotations/inquire-daily-chartprice",
+          "FHKST03030100",
+          {
+            FID_COND_MRKT_DIV_CODE: "N",
+            FID_INPUT_ISCD: index,
+            FID_INPUT_DATE_1: compactDate(from),
+            FID_INPUT_DATE_2: compactDate(end),
+            FID_PERIOD_DIV_CODE: "D",
+          },
+        );
+    const batch = parseIndexRows(payload.output2, domestic ? "bstp_nmix_prpr" : "ovrs_nmix_prpr");
     if (!batch.length) break;
     batch.forEach((row) => rows.set(row.date, row));
     const earliest = batch.reduce((min, row) => (row.date < min ? row.date : min), batch[0].date);
     if (earliest <= from) break;
     end = previousDay(earliest);
   }
-  return [...rows.values()].sort((a, b) => a.date.localeCompare(b.date));
+  const sorted = [...rows.values()].sort((a, b) => a.date.localeCompare(b.date));
+  return domestic ? withoutUnclosedKoreanSession(sorted, new Date()) : sorted;
 }

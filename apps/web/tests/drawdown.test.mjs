@@ -139,3 +139,19 @@ test("KIS index rows parse into dated closes and skip malformed rows", () => {
   assert.deepEqual(parseIndexRows(undefined), []);
   assert.equal(previousDay("2026-03-01"), "2026-02-28");
 });
+
+test("KOSPI rows use the domestic close field", () => {
+  assert.deepEqual(
+    parseIndexRows([{ stck_bsop_date: "20261120", bstp_nmix_prpr: "4894.72", ovrs_nmix_prpr: "1" }], "bstp_nmix_prpr"),
+    [{ date: "2026-11-20", close: 4894.72 }],
+  );
+  assert.ok("plan" in parseDrawdownPlan(plan({ index: "KOSPI" }), buckets));
+});
+
+test("today's KOSPI row is dropped until the Korean market has closed", async () => {
+  const { withoutUnclosedKoreanSession } = await load("../lib/index-history.ts");
+  const rows = [{ date: "2026-11-19", close: 5137.89 }, { date: "2026-11-20", close: 4894.72 }];
+  // 11:00 KST is 02:00 UTC; 16:00 KST is 07:00 UTC.
+  assert.deepEqual(withoutUnclosedKoreanSession(rows, new Date("2026-11-20T02:00:00Z")).map((r) => r.date), ["2026-11-19"]);
+  assert.equal(withoutUnclosedKoreanSession(rows, new Date("2026-11-20T07:00:00Z")).length, 2);
+});

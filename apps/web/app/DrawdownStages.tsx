@@ -52,7 +52,7 @@ export default function DrawdownStages({ portfolio, drawdown, onChange, onNotice
           <h2 id="drawdown-title">지수 하락 단계</h2>
         </div>
         <p className={styles.lead}>
-          S&amp;P 500이나 나스닥이 52주 고점에서 얼마나 내려왔는지에 따라 쓸 목표 비중을 미리 정해 둡니다.
+          코스피, S&amp;P 500, 나스닥이 52주 고점에서 얼마나 내려왔는지에 따라 쓸 목표 비중을 미리 정해 둡니다.
           단계에 들어서면 리밸런싱 화면에서 안내하고, 목표는 확인한 뒤에만 바뀝니다.
         </p>
         <button
@@ -254,7 +254,7 @@ export default function DrawdownStages({ portfolio, drawdown, onChange, onNotice
         <Plus size={16} /> 단계 추가
       </button>
       <p className={base.help}>
-        지수는 하루 한 번 미국장 종가 기준으로 계산합니다. 목표 비중은 단계의 목표로 적용 버튼을 누른 뒤 저장해야 바뀝니다.
+        지수는 각 시장의 최근 종가로 계산합니다. 목표 비중은 단계의 목표로 적용 버튼을 누른 뒤 저장해야 바뀝니다.
       </p>
     </section>
   );
