@@ -32,11 +32,44 @@
   display: flex;
 }
 .start {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  padding: 4px 0 18px;
+  margin-top: 24px;
+  padding: 14px 0 calc(14px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+  background: var(--bg);
+}
+.start strong {
+  font-size: 15px;
+}
+.start[data-ready] {
+  box-shadow: 0 -10px 16px -14px #102f3b33;
+}
+/* Nothing to confirm: no reason to keep the bar pinned over the content. */
+.start:not([data-ready]) {
+  position: static;
+}
+@media (max-width: 760px) {
+  /* Sit above the fixed bottom navigation. */
+  .start {
+    bottom: calc(64px + env(safe-area-inset-bottom));
+    padding-bottom: 12px;
+  }
+  .start {
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+  .start small {
+    display: none;
+  }
+  .start .primary {
+    flex: none;
+  }
 }
 .start > div {
   display: grid;
@@ -321,12 +354,7 @@
 }
 @media (max-width: 600px) {
   .start {
-    align-items: flex-start;
-    flex-direction: column;
     gap: 12px;
-  }
-  .start .primary {
-    width: 100%;
   }
   .detailHead {
     font-size: 13px;

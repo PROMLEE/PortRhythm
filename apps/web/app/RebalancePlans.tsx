@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { ArrowRight, Check, ChevronDown, Plus, RefreshCw } from "lucide-react";
 import AssetIcon from "./AssetIcon";
 import RunReplacementForm from "./RunReplacementForm";
@@ -740,7 +740,11 @@ export default function RebalancePlans({
   onDirty,
   onNewPlan,
   onSelectAsset,
+  preview,
+  startSummary,
 }: {
+  preview?: ReactNode;
+  startSummary?: string | null;
   userId: string;
   config: RunConfig;
   portfolio: Portfolio;
@@ -934,20 +938,33 @@ export default function RebalancePlans({
             onSelectAsset={onSelectAsset}
           />
         ) : (
-          <div className={styles.start}>
-            <div>
-              <strong>제안을 확정하고 순서대로 진행하세요.</strong>
-              <small>시세가 변해도 계획 수량은 유지됩니다.</small>
+          <>
+            {preview}
+            {/* Confirming comes after reading the proposal, so the bar follows it and stays in reach while scrolling. */}
+            <div className={styles.start} data-ready={canStart || undefined}>
+              {canStart ? (
+                <>
+                  <div>
+                    <strong>{startSummary ?? "제안된 거래"}</strong>
+                    <small>계획을 시작하면 시세가 변해도 거래 수량은 그대로 유지됩니다.</small>
+                  </div>
+                  <button
+                    type="button"
+                    className={styles.primary}
+                    disabled={busy || disabled || Boolean(error)}
+                    onClick={start}
+                  >
+                    {busy ? "시작하는 중…" : "이 계획으로 시작"}
+                  </button>
+                </>
+              ) : (
+                <div>
+                  <strong>지금은 시작할 거래가 없습니다.</strong>
+                  <small>{disabled ? "저장하지 않은 변경 내용을 먼저 저장해 주세요." : "모든 포트가 허용 범위 안이거나, 가격·배정 확인이 필요합니다."}</small>
+                </div>
+              )}
             </div>
-            <button
-              type="button"
-              className={styles.primary}
-              disabled={!canStart || busy || disabled || Boolean(error)}
-              onClick={start}
-            >
-              {busy ? "확정 중…" : "이 계획으로 시작"}
-            </button>
-          </div>
+          </>
         ))}
       {!loading && tab === "history" && (
         <section className={styles.history}>

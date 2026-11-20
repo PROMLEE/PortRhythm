@@ -110,9 +110,9 @@
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 12px;
-  margin: 0 0 22px;
-  padding: 16px 0;
-  border-bottom: 1px solid var(--line);
+  margin: 8px 0 0;
+  padding: 20px 0 8px;
+  border-top: 1px solid var(--line);
 }
 .compact strong {
   font-size: 14px;

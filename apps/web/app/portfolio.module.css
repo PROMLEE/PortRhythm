@@ -428,10 +428,10 @@
   line-height: 1.6;
 }
 .methodNote {
-  margin: -7px 0 12px;
-  color: #5271a5;
+  margin: -4px 0 4px;
+  color: var(--muted);
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 400;
 }
 .ruleForm {
   display: grid;
@@ -2295,9 +2295,27 @@
   gap: 10px;
   margin: 20px 0;
 }
-.rebalanceOverview > strong {
+.rebalanceOverview > div {
+  display: grid;
+  gap: 4px;
+}
+.rebalanceOverview > div:last-child {
+  text-align: right;
+  justify-items: end;
+}
+.rebalanceOverview strong {
   font-size: 16px;
   color: var(--ink);
+}
+.rebalanceOverview span {
+  font-size: 13px;
+  color: var(--muted);
+}
+@media (max-width: 640px) {
+  .rebalanceOverview > div:last-child {
+    text-align: left;
+    justify-items: start;
+  }
 }
 .rebalanceCashResult {
   font-size: 13px;
