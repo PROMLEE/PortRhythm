@@ -1,4 +1,5 @@
 import type { Holding, Market } from "./holdings";
+import type { DrawdownPlan } from "./drawdown";
 
 export type Bucket = {
   id: string;
@@ -134,6 +135,7 @@ export type Portfolio = {
   snapshots: Snapshot[];
   cashFlows: CashFlow[];
   deletedCashFlows?: CashFlow[];
+  drawdownPlan?: DrawdownPlan | null;
 };
 
 export function holdingValueKrw(holding: Holding, usdKrw: number) {

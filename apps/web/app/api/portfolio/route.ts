@@ -12,6 +12,7 @@ import {
   savePortfolioAssets,
 } from "../../../lib/portfolio-db";
 import { listKrwCryptoMarkets } from "../../../lib/bithumb";
+import { parseDrawdownPlan } from "../../drawdown";
 
 export const runtime = "nodejs";
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -257,6 +258,12 @@ async function saveRequest(request: Request, assetsOnly: boolean) {
         },
         { status: 400 },
       );
+    if (!assetsOnly && input.drawdownPlan !== undefined) {
+      const parsed = parseDrawdownPlan(input.drawdownPlan, input.buckets);
+      if ("error" in parsed)
+        return NextResponse.json({ message: parsed.error }, { status: 400 });
+      input.drawdownPlan = parsed.plan;
+    }
     if (input.usdKrwMode === "manual") input.usdKrwRateDate = null;
     const existingCodes = new Set(
       input.cryptoAssets.length ? await listCryptoAssets(userId) : [],
