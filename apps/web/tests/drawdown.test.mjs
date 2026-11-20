@@ -44,6 +44,21 @@ test("52-week drawdown uses the highest close within 364 days of the latest clos
   assert.equal(result.highDate, "2026-02-10");
   assert.equal(result.drawdownPercent, 10);
   assert.equal(result.closeDate, "2026-11-19");
+  assert.equal(result.low, 5400);
+  assert.equal(result.risePercent, 0);
+});
+
+test("52-week rise is measured from the lowest close in the window", () => {
+  const result = fiftyTwoWeekDrawdown("NDX", [
+    { date: "2025-11-01", close: 100 }, // outside the window
+    { date: "2026-03-02", close: 8000 },
+    { date: "2026-06-15", close: 10000 },
+    { date: "2026-11-19", close: 9000 },
+  ]);
+  assert.equal(result.low, 8000);
+  assert.equal(result.lowDate, "2026-03-02");
+  assert.equal(result.risePercent, 12.5);
+  assert.equal(result.drawdownPercent, 10);
 });
 
 test("52-week drawdown is zero at a new high and null without data", () => {

@@ -32,6 +32,9 @@ export type IndexDrawdown = {
   close: number;
   closeDate: string;
   drawdownPercent: number;
+  low: number;
+  lowDate: string;
+  risePercent: number;
 };
 
 const round = (value: number) => Math.round(value * 100) / 100;
@@ -74,7 +77,7 @@ export function stageTotal(stage: DrawdownStage, buckets: Pick<Bucket, "id">[]) 
   return round(buckets.reduce((sum, bucket) => sum + stageTarget(stage, bucket.id), 0));
 }
 
-/** Uses closing prices from the last 52 weeks ending at the latest close. */
+/** Uses closing prices from the last 52 weeks ending at the latest close (high and low included). */
 export function fiftyTwoWeekDrawdown(
   index: DrawdownIndex,
   rows: IndexClose[],
@@ -88,7 +91,12 @@ export function fiftyTwoWeekDrawdown(
   start.setUTCDate(start.getUTCDate() - 364);
   const from = start.toISOString().slice(0, 10);
   let peak = latest;
-  for (const row of valid) if (row.date >= from && row.close > peak.close) peak = row;
+  let trough = latest;
+  for (const row of valid) {
+    if (row.date < from) continue;
+    if (row.close > peak.close) peak = row;
+    if (row.close < trough.close) trough = row;
+  }
   return {
     index,
     high: peak.close,
@@ -96,6 +104,9 @@ export function fiftyTwoWeekDrawdown(
     close: latest.close,
     closeDate: latest.date,
     drawdownPercent: round(Math.max(0, (1 - latest.close / peak.close) * 100)),
+    low: trough.close,
+    lowDate: trough.date,
+    risePercent: round(Math.max(0, (latest.close / trough.close - 1) * 100)),
   };
 }
 

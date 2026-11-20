@@ -26,6 +26,7 @@ export default function PortfolioDashboard({
   onHistory,
   onEdit,
   metadata,
+  market,
 }: {
   total: number;
   gain: number | null;
@@ -41,6 +42,7 @@ export default function PortfolioDashboard({
   targetDetail: string;
   onRebalance: () => void;
   onComposition: () => void;
+  market?: ReactNode;
   onHistory: () => void;
   onEdit: () => void;
   metadata: ReactNode;
@@ -99,6 +101,7 @@ export default function PortfolioDashboard({
             </button>
           </div>
         </section>
+        {market && <div className={styles.marketInline}>{market}</div>}
         <section className={styles.assets} aria-label="보유 자산">
           <div className={styles.assetHeading}>
             <h2>보유 자산</h2>
@@ -123,6 +126,7 @@ export default function PortfolioDashboard({
             <ArrowRight size={17} />
           </button>
         </section>
+        {market}
       </aside>
     </div>
   );

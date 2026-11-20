@@ -36,3 +36,31 @@ export function useIndexDrawdown(index: DrawdownIndex | null): IndexDrawdownStat
   if (!index || state.index !== index) return { data: null, error: null, loading: Boolean(index) };
   return { data: state.data, error: state.error, loading: state.loading };
 }
+
+export type IndexOverviewState = {
+  data: IndexDrawdown[] | null;
+  error: string | null;
+  loading: boolean;
+};
+
+/** Loads 52-week high/low positions for every supported index. */
+export function useIndexOverview(enabled: boolean): IndexOverviewState {
+  const [state, setState] = useState<IndexOverviewState>({ data: null, error: null, loading: false });
+  useEffect(() => {
+    if (!enabled) return;
+    const controller = new AbortController();
+    setState((current) => ({ ...current, loading: true, error: null }));
+    fetch("/api/market-data/index-drawdown", { signal: controller.signal })
+      .then(async (response) => {
+        const body = (await response.json().catch(() => ({}))) as { drawdowns?: IndexDrawdown[]; message?: string };
+        if (!response.ok || !body.drawdowns) throw new Error(body.message || "지수 시세를 받지 못했습니다.");
+        setState({ data: body.drawdowns, error: null, loading: false });
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        setState({ data: null, error: error instanceof Error ? error.message : "지수 시세를 받지 못했습니다.", loading: false });
+      });
+    return () => controller.abort();
+  }, [enabled]);
+  return state;
+}

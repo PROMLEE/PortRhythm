@@ -42,7 +42,8 @@ import Portfolio3D from "./Portfolio3D";
 import PortfolioVisuals from "./PortfolioVisuals";
 import SaveStatus from "./SaveStatus";
 import DrawdownStages, { DrawdownNotice } from "./DrawdownStages";
-import { useIndexDrawdown } from "./use-index-drawdown";
+import { useIndexDrawdown, useIndexOverview } from "./use-index-drawdown";
+import IndexOverview from "./IndexOverview";
 import { pruneDrawdownPlan } from "./drawdown";
 import {
   EXAMPLE_BUCKETS,
@@ -781,6 +782,7 @@ export default function PortfolioBuilder({
       ? drawdownPlan.index
       : null,
   );
+  const indexOverview = useIndexOverview(screen === "dashboard");
   const [cashBucketChoice, setCashBucketChoice] = useState<string | null>(null);
   const [cashInput, setCashInput] = useState("");
   const [budgetMode, setBudgetMode] = useState<"input" | "theoretical">(
@@ -1908,6 +1910,7 @@ export default function PortfolioBuilder({
         refreshing={refreshing || quotesRefreshing} onRefresh={refresh} controls={dashboardControls}
         onEdit={onEditHoldings} onHistory={()=>onNavigate("history")} onComposition={()=>onNavigate("composition")} onRebalance={()=>onNavigate("rebalance")}
         composition={<PortfolioVisuals portfolio={draft} holdings={holdings}/>}
+        market={<IndexOverview overview={indexOverview} plan={draft.drawdownPlan ?? null} />}
         targetTitle={rebalanceReady ? driftItems.length ? `${driftItems.length}개 포트 조정 필요` : "목표 범위 안에 있어요" : "배정·가격 확인 필요"}
         targetDetail={!rebalanceReady ? "미분류 자산과 시세를 확인하세요." : driftItems.length ? "정해둔 목표와 현재 비중의 차이를 확인하세요." : "다음 점검 때도 나의 투자 원칙을 이어가세요."}
         metadata={<>{quotesRefreshing && <span>시세 갱신 중</span>}{(quoteError || cryptoRefreshError || fxRefreshError) && <p role="status">{quoteError || cryptoRefreshError || fxRefreshError}</p>}{Boolean(values?.missingPrices) && <span>가격 미확인 자산 {values?.missingPrices}개</span>}</>}

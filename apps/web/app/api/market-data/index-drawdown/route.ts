@@ -29,6 +29,20 @@ async function load(index: DrawdownIndex) {
   return fiftyTwoWeekDrawdown(index, rows);
 }
 
+async function drawdownFor(index: DrawdownIndex) {
+  const cached = cache.get(index);
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
+  let request = pending.get(index);
+  if (!request) {
+    request = load(index).finally(() => pending.delete(index));
+    pending.set(index, request);
+  }
+  const drawdown = await request;
+  if (drawdown) cache.set(index, { value: drawdown, expiresAt: Date.now() + CACHE_MS });
+  return drawdown;
+}
+
+/** ?index=SPX returns one index; without it, all supported indexes. */
 export async function GET(request: Request) {
   const userId = await currentUserId();
   if (!userId)
@@ -39,30 +53,35 @@ export async function GET(request: Request) {
       { status: 429, headers: { "Retry-After": "60" } },
     );
   const index = new URL(request.url).searchParams.get("index") as DrawdownIndex | null;
-  if (!index || !DRAWDOWN_INDEXES.some((row) => row.id === index))
+  if (index !== null && !DRAWDOWN_INDEXES.some((row) => row.id === index))
     return NextResponse.json({ message: "지수를 확인해 주세요" }, { status: 400 });
   if (!kisConfigured())
     return NextResponse.json(
       { message: "지수 시세를 조회할 수 있는 시세 API가 설정되지 않았습니다." },
       { status: 503 },
     );
-  const cached = cache.get(index);
-  if (cached && cached.expiresAt > Date.now())
-    return NextResponse.json({ drawdown: cached.value });
   try {
-    let request = pending.get(index);
-    if (!request) {
-      request = load(index).finally(() => pending.delete(index));
-      pending.set(index, request);
+    if (index) {
+      const drawdown = await drawdownFor(index);
+      if (!drawdown)
+        return NextResponse.json(
+          { message: "지수 시세를 받지 못했습니다. 잠시 후 다시 시도해 주세요." },
+          { status: 502 },
+        );
+      return NextResponse.json({ drawdown });
     }
-    const drawdown = await request;
-    if (!drawdown)
+    const drawdowns: IndexDrawdown[] = [];
+    // Sequential on purpose: KIS requests share one paced queue.
+    for (const row of DRAWDOWN_INDEXES) {
+      const drawdown = await drawdownFor(row.id).catch(() => null);
+      if (drawdown) drawdowns.push(drawdown);
+    }
+    if (!drawdowns.length)
       return NextResponse.json(
         { message: "지수 시세를 받지 못했습니다. 잠시 후 다시 시도해 주세요." },
         { status: 502 },
       );
-    cache.set(index, { value: drawdown, expiresAt: Date.now() + CACHE_MS });
-    return NextResponse.json({ drawdown });
+    return NextResponse.json({ drawdowns });
   } catch (error) {
     return NextResponse.json(
       { message: publicErrorMessage(error, "지수 시세를 받지 못했습니다.") },
