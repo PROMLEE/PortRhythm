@@ -1,7 +1,8 @@
 import type { Bucket } from "./portfolio-model";
 
-export type DrawdownIndex = "SPX" | "COMP" | "NDX";
+export type DrawdownIndex = "KOSPI" | "SPX" | "COMP" | "NDX";
 export const DRAWDOWN_INDEXES: { id: DrawdownIndex; label: string }[] = [
+  { id: "KOSPI", label: "코스피" },
   { id: "SPX", label: "S&P 500" },
   { id: "COMP", label: "나스닥 종합" },
   { id: "NDX", label: "나스닥 100" },

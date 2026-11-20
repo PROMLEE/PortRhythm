@@ -20,11 +20,10 @@ export default function IndexOverview({
 }) {
   const titleId = useId();
   const rows = overview.data ?? [];
-  const closeDate = rows.reduce((latest, row) => (row.closeDate > latest ? row.closeDate : latest), "");
   const showsStages = Boolean(plan?.enabled && plan.stages.some((stage) => stage.threshold > 0) && rows.some((row) => row.index === plan.index));
   return (
     <section className={styles.market} aria-labelledby={titleId}>
-      <h2 id={titleId}>미국 지수 52주 위치</h2>
+      <h2 id={titleId}>주요 지수 52주 위치</h2>
       {overview.loading && !rows.length && (
         <ul className={styles.rows} aria-hidden="true">
           {DRAWDOWN_INDEXES.map((row) => (
@@ -45,7 +44,7 @@ export default function IndexOverview({
           })}
         </ul>
       )}
-      {closeDate && <p className={styles.note}>{monthDay(closeDate)} 종가 기준, 최근 52주 종가로 계산합니다.{showsStages && ` ${indexLabel(plan!.index)} 막대의 세로선은 하락 단계가 시작되는 지점입니다.`}</p>}
+      {rows.length > 0 && <p className={styles.note}>각 지수의 최근 종가와 최근 52주 종가로 계산합니다.{showsStages && ` ${indexLabel(plan!.index)} 막대의 세로선은 하락 단계가 시작되는 지점입니다.`}</p>}
     </section>
   );
 }
@@ -72,6 +71,7 @@ export function IndexRangeRow({
         <strong>{indexLabel(row.index)}</strong>
         {badge && <span className={styles.badge}>하락 단계 기준</span>}
         <b>{value(row.close)}</b>
+        <small className={styles.closeDate}>{monthDay(row.closeDate)}</small>
       </div>
       <div
         className={styles.range}
