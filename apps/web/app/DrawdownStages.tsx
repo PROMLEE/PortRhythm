@@ -52,7 +52,7 @@ export default function DrawdownStages({ portfolio, drawdown, onChange, onNotice
         </div>
         <p className={styles.lead}>
           S&amp;P 500이나 나스닥이 52주 고점에서 얼마나 내려왔는지에 따라 쓸 목표 비중을 미리 정해 둡니다.
-          단계에 들어서면 대시보드에서 안내하고, 목표는 확인한 뒤에만 바뀝니다.
+          단계에 들어서면 리밸런싱 화면에서 안내하고, 목표는 확인한 뒤에만 바뀝니다.
         </p>
         <button
           type="button"
@@ -291,19 +291,18 @@ export default function DrawdownStages({ portfolio, drawdown, onChange, onNotice
   );
 }
 
-/** Dashboard reminder shown only when the plan suggests targets that differ from the current ones. */
+/** Rebalance-screen reminder shown only when the plan suggests targets that differ from the current ones. */
 export function DrawdownNotice({ portfolio, drawdown, onReview }: { portfolio: Portfolio; drawdown: IndexDrawdownState; onReview: () => void }) {
   const plan = portfolio.drawdownPlan;
   if (!plan?.enabled || !drawdown.data) return null;
   const suggested = recommendedStage(plan, drawdown.data.drawdownPercent);
   if (!suggested || stageMatchesBuckets(suggested, portfolio.buckets)) return null;
   return (
-    <div className={`${styles.suggestion} ${styles.notice}`} data-pending>
-      <p>
-        {indexLabel(plan.index)} 지수가 52주 고점보다 {drawdown.data.drawdownPercent}% 낮습니다.
-        정해 둔 <strong>{stageLabel(suggested)}</strong> 단계 목표로 바꿀지 확인해 주세요.
-      </p>
-      <button type="button" className={styles.apply} onClick={onReview}>단계 확인하기</button>
-    </div>
+    <p className={styles.notice}>
+      <span>
+        {indexLabel(plan.index)} 지수가 고점보다 {drawdown.data.drawdownPercent}% 낮습니다. {suggested.threshold === 0 ? "평상시" : `−${suggested.threshold}%`} 단계 목표로 바꿀지 확인해 주세요.
+      </span>
+      <button type="button" onClick={onReview}>단계 확인</button>
+    </p>
   );
 }
