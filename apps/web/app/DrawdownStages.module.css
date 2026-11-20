@@ -65,6 +65,6 @@
   .targets { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ticks span { font-size: 10px; }
 }
-.notice { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; margin: 16px 0 0; padding: 10px 0 10px 12px; box-shadow: inset 3px 0 0 var(--blue); font-size: 13px; line-height: 1.5; color: var(--ink); }
+.notice { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; margin: 0; padding: 10px 0 10px 12px; box-shadow: inset 3px 0 0 var(--blue); font-size: 13px; line-height: 1.5; color: var(--ink); }
 .notice button { flex: none; border: 0; background: none; padding: 4px 0; color: var(--blue); font: inherit; font-weight: 750; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 .notice button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }

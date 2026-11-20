@@ -784,7 +784,7 @@ export default function PortfolioBuilder({
       drawdownPlan.stages.some((stage) => Math.abs(stageTotal(stage, draft.buckets) - 100) > 0.05),
   );
   const indexDrawdown = useIndexDrawdown(
-    drawdownPlan && ((screen === "strategy" && strategyTab === "drawdown") || (screen === "dashboard" && drawdownPlan.enabled))
+    drawdownPlan && ((screen === "strategy" && strategyTab === "drawdown") || (screen === "rebalance" && drawdownPlan.enabled))
       ? drawdownPlan.index
       : null,
   );
@@ -1916,7 +1916,6 @@ export default function PortfolioBuilder({
         refreshing={refreshing || quotesRefreshing} onRefresh={refresh} controls={dashboardControls}
         onEdit={onEditHoldings} onHistory={()=>onNavigate("history")} onComposition={()=>onNavigate("composition")} onRebalance={()=>onNavigate("rebalance")}
         composition={<PortfolioVisuals portfolio={draft} holdings={holdings}/>}
-        notice={<DrawdownNotice portfolio={draft} drawdown={indexDrawdown} onReview={() => { setStrategyTab("drawdown"); onNavigate("strategy"); }} />}
         market={<IndexOverview overview={indexOverview} plan={draft.drawdownPlan ?? null} />}
         targetTitle={rebalanceReady ? driftItems.length ? `${driftItems.length}개 포트 조정 필요` : "목표 범위 안에 있어요" : "배정·가격 확인 필요"}
         targetDetail={!rebalanceReady ? "미분류 자산과 시세를 확인하세요." : driftItems.length ? "정해둔 목표와 현재 비중의 차이를 확인하세요." : "다음 점검 때도 나의 투자 원칙을 이어가세요."}
@@ -2610,6 +2609,7 @@ export default function PortfolioBuilder({
           </div>
         </div>
       )}
+      {screen === "rebalance" && <DrawdownNotice portfolio={draft} drawdown={indexDrawdown} onReview={() => { setStrategyTab("drawdown"); onNavigate("strategy"); }} />}
       {screen === "rebalance" && <ReviewSettings userId={userId} compact onSettings={()=>{setRequestedPreferenceTab("review");onNavigate("preferences");}} onDirty={setReviewDirty}/>}
       {screen === "rebalance" && <RebalancePlans
         userId={userId} portfolio={draft} holdings={holdings} disabled={dirty||saving}

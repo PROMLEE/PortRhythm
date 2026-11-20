@@ -27,7 +27,6 @@ export default function PortfolioDashboard({
   onEdit,
   metadata,
   market,
-  notice,
 }: {
   total: number;
   gain: number | null;
@@ -44,7 +43,6 @@ export default function PortfolioDashboard({
   onRebalance: () => void;
   onComposition: () => void;
   market?: ReactNode;
-  notice?: ReactNode;
   onHistory: () => void;
   onEdit: () => void;
   metadata: ReactNode;
@@ -90,7 +88,6 @@ export default function PortfolioDashboard({
             )}
           </div>
           {gainNote && <p className={styles.note}>{gainNote}</p>}
-          {notice}
           <div className={styles.shortcuts}>
             <button type="button" onClick={onComposition}>
               <PieChart size={17} />
