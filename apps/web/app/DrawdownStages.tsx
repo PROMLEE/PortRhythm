@@ -52,7 +52,7 @@ export default function DrawdownStages({ portfolio, drawdown, onChange, onNotice
         </div>
         <p className={styles.lead}>
           S&amp;P 500이나 나스닥이 52주 고점에서 얼마나 내려왔는지에 따라 쓸 목표 비중을 미리 정해 둡니다.
-          단계에 들어서면 알려 드리고, 목표는 확인한 뒤에만 바뀝니다.
+          단계에 들어서면 대시보드에서 안내하고, 목표는 확인한 뒤에만 바뀝니다.
         </p>
         <button
           type="button"
