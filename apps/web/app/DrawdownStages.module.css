@@ -12,23 +12,8 @@
 .unitInput { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; }
 .unitInput input { width: 72px; height: 36px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); padding: 0 8px; font: inherit; font-size: 14px; text-align: right; font-variant-numeric: tabular-nums; }
 
-/* The ruler is the one visual signature: stages as bands that deepen with the drawdown, with today's close as a needle. */
-.ruler { margin: 0; display: grid; gap: 10px; }
-.track { position: relative; height: 36px; }
-.bands { position: absolute; inset: 0; border-radius: var(--radius-sm); background: var(--soft); overflow: hidden; }
-.segment {
-  position: absolute; top: 0; bottom: 0;
-  background: color-mix(in srgb, var(--blue) calc(8% + var(--depth) * 42%), transparent);
-  border-left: 1px solid var(--surface);
-}
-.segment:first-child { border-left: 0; }
-.ticks { position: relative; height: 16px; margin-top: -4px; }
-.ticks span { position: absolute; top: 0; padding-left: 2px; font-size: 11px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.segment[data-active] { box-shadow: inset 0 0 0 2px var(--ink); }
-.marker { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--ink); }
-.marker::before { content: ""; position: absolute; top: 0; left: -5px; border: 6px solid transparent; border-top-color: var(--ink); border-bottom: 0; }
-.ruler figcaption { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; font-size: 13px; color: var(--muted); }
-.ruler figcaption strong { color: var(--ink); font-size: 20px; font-variant-numeric: tabular-nums; }
+.status { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; font-size: 13px; color: var(--muted); }
+.status strong { color: var(--ink); font-size: 20px; font-variant-numeric: tabular-nums; }
 
 .suggestion { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; padding: 12px 14px; border-radius: var(--radius-md); background: var(--soft); }
 .suggestion p { margin: 0; font-size: 14px; line-height: 1.6; color: var(--ink); }
@@ -39,6 +24,7 @@
 .stages { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .stage { display: grid; gap: 12px; padding: 14px; border: 1px solid var(--line); border-radius: var(--radius-md); }
 .stage[data-suggested] { border-color: var(--blue); }
+.current { justify-self: start; padding: 2px 8px; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--blue) 14%, var(--surface)); color: var(--ink); font-size: 12px; font-weight: 700; }
 .stageHead { display: grid; grid-template-columns: minmax(150px, auto) 1fr auto; align-items: center; gap: 14px; }
 .stageHead > strong { font-size: 14px; color: var(--ink); }
 .threshold { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700; color: var(--ink); white-space: nowrap; }
@@ -63,7 +49,6 @@
   .stageHead { grid-template-columns: 1fr auto; }
   .mix { grid-column: 1 / -1; grid-row: 2; }
   .targets { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .ticks span { font-size: 10px; }
 }
 .notice { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; margin: 0; padding: 10px 0 10px 12px; box-shadow: inset 3px 0 0 var(--blue); font-size: 13px; line-height: 1.5; color: var(--ink); }
 .notice button { flex: none; border: 0; background: none; padding: 4px 0; color: var(--blue); font: inherit; font-weight: 750; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }

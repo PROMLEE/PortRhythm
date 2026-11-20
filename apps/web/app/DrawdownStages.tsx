@@ -67,9 +67,7 @@ export default function DrawdownStages({ portfolio, drawdown, onChange, onNotice
 
   const stages = sortStages(plan.stages);
   const baseStage = stages[0];
-  const deepest = stages.at(-1)!.threshold;
   const current = drawdown.data?.drawdownPercent ?? null;
-  const scale = Math.max(30, Math.ceil((Math.max(deepest, current ?? 0) + 8) / 10) * 10);
   const suggested = plan.enabled && current !== null ? recommendedStage(plan, current) : null;
   const applied = stages.find((stage) => stage.id === plan.appliedStageId) ?? null;
   const suggestedInUse = suggested ? stageMatchesBuckets(suggested, buckets) : false;
@@ -146,49 +144,18 @@ export default function DrawdownStages({ portfolio, drawdown, onChange, onNotice
         </small>
       </div>
 
-      <figure className={styles.ruler} aria-label={current === null ? "지수 하락률 눈금" : `${indexLabel(plan.index)} 52주 고점 대비 −${current}%`}>
-        <div className={styles.track}>
-          <div className={styles.bands}>
-            {stages.map((stage, position) => {
-              const end = stages[position + 1]?.threshold ?? scale;
-              return (
-                <span
-                  key={stage.id}
-                  className={styles.segment}
-                  data-active={suggested?.id === stage.id || undefined}
-                  style={{
-                    left: `${(stage.threshold / scale) * 100}%`,
-                    width: `${((end - stage.threshold) / scale) * 100}%`,
-                    ["--depth" as string]: String(position / Math.max(1, stages.length - 1)),
-                  }}
-                />
-              );
-            })}
-          </div>
-          {current !== null && (
-            <i className={styles.marker} style={{ left: `${Math.min(current / scale, 1) * 100}%` }} aria-hidden="true" />
-          )}
-        </div>
-        <div className={styles.ticks} aria-hidden="true">
-          {stages.map((stage) => (
-            <span key={stage.id} style={{ left: `${(stage.threshold / scale) * 100}%` }}>
-              {stage.threshold === 0 ? "고점" : `−${stage.threshold}%`}
+      <div className={styles.status} aria-live="polite">
+        {drawdown.loading && <span>{indexLabel(plan.index)} 시세를 불러오는 중입니다.</span>}
+        {drawdown.error && <span className={base.warning}>{drawdown.error}</span>}
+        {drawdown.data && (
+          <>
+            <strong>{indexLabel(plan.index)} 고점 대비 −{drawdown.data.drawdownPercent}%</strong>
+            <span>
+              {monthDay(drawdown.data.closeDate)} 종가 {indexValue(drawdown.data.close)}, 52주 고점 {indexValue(drawdown.data.high)}({monthDay(drawdown.data.highDate)})
             </span>
-          ))}
-        </div>
-        <figcaption>
-          {drawdown.loading && `${indexLabel(plan.index)} 시세를 불러오는 중입니다.`}
-          {drawdown.error && <span className={base.warning}>{drawdown.error}</span>}
-          {drawdown.data && (
-            <>
-              <strong>{indexLabel(plan.index)} −{drawdown.data.drawdownPercent}%</strong>
-              <span>
-                {monthDay(drawdown.data.closeDate)} 종가 {indexValue(drawdown.data.close)}, 52주 고점 {indexValue(drawdown.data.high)}({monthDay(drawdown.data.highDate)})
-              </span>
-            </>
-          )}
-        </figcaption>
-      </figure>
+          </>
+        )}
+      </div>
 
       {plan.enabled && suggested && (
         <div className={styles.suggestion} data-pending={!suggestedInUse || undefined}>
@@ -215,6 +182,7 @@ export default function DrawdownStages({ portfolio, drawdown, onChange, onNotice
           const isBase = stage.id === baseStage.id;
           return (
             <li key={stage.id} className={styles.stage} data-suggested={suggested?.id === stage.id || undefined}>
+              {suggested?.id === stage.id && <span className={styles.current}>지금 지수가 이 단계에 있습니다</span>}
               <div className={styles.stageHead}>
                 {isBase ? (
                   <strong>평상시</strong>
