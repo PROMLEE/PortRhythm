@@ -2610,7 +2610,6 @@ export default function PortfolioBuilder({
         </div>
       )}
       {screen === "rebalance" && <DrawdownNotice portfolio={draft} drawdown={indexDrawdown} onReview={() => { setStrategyTab("drawdown"); onNavigate("strategy"); }} />}
-      {screen === "rebalance" && <ReviewSettings userId={userId} compact onSettings={()=>{setRequestedPreferenceTab("review");onNavigate("preferences");}} onDirty={setReviewDirty}/>}
       {screen === "rebalance" && <RebalancePlans
         userId={userId} portfolio={draft} holdings={holdings} disabled={dirty||saving}
         canStart={rebalanceReady&&(advice.trades.length+advice.cryptoTrades.length)>0}
@@ -2619,9 +2618,8 @@ export default function PortfolioBuilder({
         onPreviewChange={setShowRunPreview} onDirty={setRunDirty} onSelectAsset={onSelectAsset}
         onNewPlan={()=>{setCashInput("");setBuyRuleIds({});setSellSymbols({});setCryptoAssetIds({});}}
         onSaved={(data,message)=>{onHoldings(withPreviousQuotes(data.holdings,holdings));setDraft(data.portfolio);portfolioCache.set(userId,data.portfolio);onNotice(message);}}
-      />}
-      {screen === "rebalance" && showRunPreview && (
-        <>
+        startSummary={rebalanceReady ? `매도 ${[...advice.trades, ...advice.cryptoTrades].filter((trade) => trade.side === "sell").length}건, 매수 ${[...advice.trades, ...advice.cryptoTrades].filter((trade) => trade.side === "buy").length}건` : null}
+        preview={<>
           <section className={styles.panel}>
             <div className={styles.panelHead}>
               <div>
@@ -2629,27 +2627,23 @@ export default function PortfolioBuilder({
               </div>
               <button type="button" className={styles.ghost} onClick={() => onNavigate("strategy")}>계산 설정 <ArrowRight size={15} /></button>
             </div>
+            {(rebalanceMode === "trade" || budgetMode === "input") && (
+              <label className={styles.cashBudget}>
+                이번에 투입할 금액 (원)
+                <NumberInput
+                  min="0"
+                  max="1000000000000000"
+                  step="1"
+                  value={cashInput}
+                  onValueChange={(value) => setCashInput(value)}
+                  placeholder="없으면 비워 두세요"
+                />
+              </label>
+            )}
+            {rebalanceMode === "add-only" && budgetMode === "theoretical" && <p className={styles.theoreticalBudget}>이론상 추가금 <strong>{fmt(advice.newCash)}</strong></p>}
             <p className={styles.methodNote}>
-              <span>{rebalanceMode === "trade" ? "매도 후 매수" : "신규 자금으로 매수"}</span>
-              {draft.toleranceMode === "relative" ? `목표 금액 대비 ±${(draft.relativeTolerancePercent ?? 10).toFixed(1)}%` : `전체 비중 ±${draft.tolerancePercent.toFixed(1)}%p`}
+              {rebalanceMode === "trade" ? "매도 후 매수" : "신규 자금으로 매수"}, 허용 오차 {draft.toleranceMode === "relative" ? `목표 금액 대비 ±${(draft.relativeTolerancePercent ?? 10).toFixed(1)}%` : `전체 비중 ±${draft.tolerancePercent.toFixed(1)}%p`}로 계산합니다.
             </p>
-            <>
-                {(rebalanceMode === "trade" || budgetMode === "input") && (
-                  <label className={styles.cashBudget}>
-                    이번에 투입할 금액 (원)
-                    <NumberInput
-                      min="0"
-                      max="1000000000000000"
-                      step="1"
-                      value={cashInput}
-                      onValueChange={(value) => setCashInput(value)}
-                      placeholder="금액 입력 · 빈칸은 0원"
-                    />
-                  </label>
-                )}
-                {rebalanceMode === "add-only" && budgetMode === "theoretical" && <p className={styles.theoreticalBudget}>이론상 추가금 <strong>{fmt(advice.newCash)}</strong></p>}
-
-            </>
             {!rebalanceReady ? (
               <div className={styles.rebalanceStatus}>
                 <span>
@@ -2670,31 +2664,18 @@ export default function PortfolioBuilder({
               </div>
             ) : (
               <>
-                <p className={styles.rangeSummary}>
-                  <strong>현재 범위 밖 {outsideNow.length}개</strong>
-                  <span>{outsideNow.length ? outsideNow.map(item => `${item.bucket.name} ${item.currentPercent < item.bucket.targetPercent ? "부족" : "초과"}`).join(" · ") : "모든 포트가 허용 범위 안입니다."}</span>
-                </p>
                 <div className={styles.rebalanceOverview}>
-                  <strong>
-                    매수{" "}
-                    {
-                      [...advice.trades, ...advice.cryptoTrades].filter((trade) => trade.side === "buy")
-                        .length
-                    }
-                    건 · 매도{" "}
-                    {
-                      [...advice.trades, ...advice.cryptoTrades].filter((trade) => trade.side === "sell")
-                        .length
-                    }
-                    건
-                  </strong>
-                  <span>제안 후 범위 이내 {inRangeCount}/{advice.items.length}</span>
-                  <span className={styles.rebalanceCashResult}>
-                    {advice.cashAllocation ? `거래 후 ${draft.buckets.find(bucket => bucket.id === advice.cashAllocation?.bucketId)?.name ?? "현금"} ${fmt(advice.cashAllocation.projectedKrw)}` : `매수 후 남는 금액 ${fmt(advice.residualCash)}`}
-                    {advice.projectedUnassignedPercent > 0
-                      ? ` · 전체의 ${pct(advice.projectedUnassignedPercent)}`
-                      : ""}
-                  </span>
+                  <div>
+                    <strong>{outsideNow.length ? `${outsideNow.length}개 포트가 허용 범위 밖입니다` : "모든 포트가 허용 범위 안입니다"}</strong>
+                    {outsideNow.length > 0 && <span>{outsideNow.map(item => `${item.bucket.name} ${item.currentPercent < item.bucket.targetPercent ? "부족" : "초과"}`).join(", ")}</span>}
+                  </div>
+                  <div>
+                    {advice.trades.length + advice.cryptoTrades.length > 0 && <span>제안대로 거래하면 {advice.items.length}개 중 {inRangeCount}개 포트가 범위 안</span>}
+                    <span>
+                      {advice.cashAllocation ? `거래 후 ${draft.buckets.find(bucket => bucket.id === advice.cashAllocation?.bucketId)?.name ?? "현금"} ${fmt(advice.cashAllocation.projectedKrw)}` : `매수 후 남는 금액 ${fmt(advice.residualCash)}`}
+                      {advice.projectedUnassignedPercent > 0 ? ` (전체의 ${pct(advice.projectedUnassignedPercent)})` : ""}
+                    </span>
+                  </div>
                 </div>
                 {advice.items.filter(item => item.bucket.id === advice.cashAllocation?.bucketId
                   && !withinPortfolioTolerance(draft, item.bucket.targetPercent, item.projectedPercent)).map(item => (
@@ -2978,10 +2959,6 @@ export default function PortfolioBuilder({
               </>
             )}
           </section>
-        </>
-      )}
-      {screen === "rebalance" && showRunPreview && (
-        <>
           <details
             className={`${styles.panel} ${styles.collapsible} ${styles.candidateSection}`}
           >
@@ -3251,8 +3228,9 @@ export default function PortfolioBuilder({
               })}
             </div>
           </details>
-        </>
-      )}
+        </>}
+      />}
+      {screen === "rebalance" && <ReviewSettings userId={userId} compact onSettings={()=>{setRequestedPreferenceTab("review");onNavigate("preferences");}} onDirty={setReviewDirty}/>}
       {screen === "history" && (
         <>
           <section className={styles.panel}>
