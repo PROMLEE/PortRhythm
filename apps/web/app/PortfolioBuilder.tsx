@@ -41,6 +41,9 @@ import AssetSortSelect, { compareAssets, type AssetSort } from "./asset-sort";
 import Portfolio3D from "./Portfolio3D";
 import PortfolioVisuals from "./PortfolioVisuals";
 import SaveStatus from "./SaveStatus";
+import DrawdownStages, { DrawdownNotice } from "./DrawdownStages";
+import { useIndexDrawdown } from "./use-index-drawdown";
+import { pruneDrawdownPlan } from "./drawdown";
 import {
   EXAMPLE_BUCKETS,
   EXAMPLE_RULES,
@@ -772,6 +775,12 @@ export default function PortfolioBuilder({
   useEffect(()=>{let active=true;setPreviousFx(null);if(draft?.includeFxGains && draft.usdKrwMode === "auto") void fetch("/api/portfolio/fx").then(r=>r.json()).then(p=>{if(active && p.previousRate && p.rateDate)setPreviousFx({rate:p.previousRate,rateDate:p.rateDate});}).catch(()=>{});return()=>{active=false;};},[draft?.includeFxGains,draft?.usdKrwMode,draft?.usdKrwRateDate]);
   const dailyFxRate=draft?.usdKrwMode === "auto" && previousFx?.rateDate === draft?.usdKrwRateDate?previousFx?.rate??null:null;
   const marketSession = useMarketSession(screen === "rebalance" && showRunPreview, userId);
+  const drawdownPlan = draft?.drawdownPlan ?? null;
+  const indexDrawdown = useIndexDrawdown(
+    drawdownPlan && (screen === "strategy" || (screen === "dashboard" && drawdownPlan.enabled))
+      ? drawdownPlan.index
+      : null,
+  );
   const [cashBucketChoice, setCashBucketChoice] = useState<string | null>(null);
   const [cashInput, setCashInput] = useState("");
   const [budgetMode, setBudgetMode] = useState<"input" | "theoretical">(
@@ -1004,9 +1013,11 @@ export default function PortfolioBuilder({
   }
   function removeBucket(id: string) {
     if (!draft || draft.buckets.length <= 1) return;
+    const buckets = draft.buckets.filter((bucket) => bucket.id !== id);
     change({
       ...draft,
-      buckets: draft.buckets.filter((bucket) => bucket.id !== id),
+      buckets,
+      drawdownPlan: draft.drawdownPlan ? pruneDrawdownPlan(draft.drawdownPlan, buckets) : draft.drawdownPlan,
       rules: draft.rules.filter((rule) => rule.bucketId !== id),
       manualAssets: draft.manualAssets.map((asset) =>
         asset.bucketId === id ? { ...asset, bucketId: null } : asset,
@@ -1891,6 +1902,7 @@ export default function PortfolioBuilder({
         />
       )}
 
+      {screen === "dashboard" && <DrawdownNotice portfolio={draft} drawdown={indexDrawdown} onReview={() => onNavigate("strategy")} />}
       {screen === "dashboard" && <PortfolioDashboard
         total={values?.total ?? 0} gain={displayedGain} percent={displayedGainPercent} gainView={gainView} gainNote={displayedGainNote}
         refreshing={refreshing || quotesRefreshing} onRefresh={refresh} controls={dashboardControls}
@@ -2087,6 +2099,7 @@ export default function PortfolioBuilder({
                 : " · 저장하려면 100%로 맞춰 주세요."}
             </p>
           </section>
+          <DrawdownStages portfolio={draft} drawdown={indexDrawdown} onChange={change} onNotice={onNotice} />
           <section className={styles.panel}>
             <div className={styles.panelHead}><h2>리밸런싱 계산 설정</h2></div>
             <p className={styles.help}>이번 계산에 적용됩니다. 추가 투입금과 조정할 종목은 리밸런싱에서 선택하세요.</p>
