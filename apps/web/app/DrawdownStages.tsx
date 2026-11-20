@@ -2,6 +2,7 @@
 
 import { Plus, Trash2 } from "lucide-react";
 import NumberInput from "./NumberInput";
+import { IndexRangeRow, indexCloseDay } from "./IndexOverview";
 import {
   DRAWDOWN_INDEXES,
   MAX_DRAWDOWN_STAGES,
@@ -149,10 +150,10 @@ export default function DrawdownStages({ portfolio, drawdown, onChange, onNotice
         {drawdown.error && <span className={base.warning}>{drawdown.error}</span>}
         {drawdown.data && (
           <>
-            <strong>{indexLabel(plan.index)} 고점 대비 −{drawdown.data.drawdownPercent}%</strong>
-            <span>
-              {monthDay(drawdown.data.closeDate)} 종가 {indexValue(drawdown.data.close)}, 52주 고점 {indexValue(drawdown.data.high)}({monthDay(drawdown.data.highDate)})
-            </span>
+            <IndexRangeRow row={drawdown.data} stages={plan.stages} />
+            <small>
+              {indexCloseDay(drawdown.data.closeDate)} 종가 기준입니다. 막대는 최근 52주 저점부터 고점까지이고, 세로선은 하락 단계가 시작되는 지점입니다.
+            </small>
           </>
         )}
       </div>

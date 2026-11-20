@@ -1,7 +1,7 @@
 "use client";
 
 import { useId } from "react";
-import { DRAWDOWN_INDEXES, indexLabel, sortStages, type DrawdownPlan } from "./drawdown";
+import { DRAWDOWN_INDEXES, indexLabel, sortStages, type DrawdownPlan, type DrawdownStage, type IndexDrawdown } from "./drawdown";
 import type { IndexOverviewState } from "./use-index-drawdown";
 import styles from "./IndexOverview.module.css";
 
@@ -36,46 +36,10 @@ export default function IndexOverview({
       {rows.length > 0 && (
         <ul className={styles.rows}>
           {rows.map((row) => {
-            const span = row.high - row.low;
-            const position = span > 0 ? ((row.close - row.low) / span) * 100 : 100;
-            const planned = plan?.enabled && plan.index === row.index;
-            const ticks = planned
-              ? sortStages(plan.stages)
-                  .filter((stage) => stage.threshold > 0)
-                  .map((stage) => ({ id: stage.id, threshold: stage.threshold, level: row.high * (1 - stage.threshold / 100) }))
-                  .filter((tick) => tick.level > row.low && span > 0)
-              : [];
+            const planned = Boolean(plan?.enabled && plan.index === row.index);
             return (
               <li key={row.index}>
-                <div className={styles.head}>
-                  <strong>{indexLabel(row.index)}</strong>
-                  {planned && <span className={styles.badge}>하락 단계 기준</span>}
-                  <b>{value(row.close)}</b>
-                </div>
-                <div
-                  className={styles.range}
-                  role="img"
-                  aria-label={`52주 저점 ${value(row.low)}, 고점 ${value(row.high)}, 현재 ${value(row.close)}. 저점보다 ${percent(row.risePercent)}% 높고 고점보다 ${percent(row.drawdownPercent)}% 낮습니다.`}
-                >
-                  <span className={styles.fill} style={{ width: `${position}%` }} />
-                  {ticks.map((tick) => (
-                    <span
-                      key={tick.id}
-                      className={styles.tick}
-                      style={{ left: `${((tick.level - row.low) / span) * 100}%` }}
-                      title={`고점 대비 −${tick.threshold}%`}
-                    />
-                  ))}
-                  <span className={styles.dot} style={{ left: `${position}%` }} />
-                </div>
-                <div className={styles.ends}>
-                  <span className={styles.up}>저점 대비 +{percent(row.risePercent)}%</span>
-                  <span className={styles.down}>고점 대비 −{percent(row.drawdownPercent)}%</span>
-                </div>
-                <div className={styles.levels}>
-                  <span>{value(row.low)}({monthDay(row.lowDate)})</span>
-                  <span>{value(row.high)}({monthDay(row.highDate)})</span>
-                </div>
+                <IndexRangeRow row={row} stages={planned ? plan!.stages : []} badge={planned} />
               </li>
             );
           })}
@@ -85,3 +49,56 @@ export default function IndexOverview({
     </section>
   );
 }
+
+/** One index on its 52-week low-to-high bar; stage starts appear as ticks. Shared by the dashboard and the drawdown tab. */
+export function IndexRangeRow({
+  row,
+  stages,
+  badge = false,
+}: {
+  row: IndexDrawdown;
+  stages: DrawdownStage[];
+  badge?: boolean;
+}) {
+  const span = row.high - row.low;
+  const position = span > 0 ? ((row.close - row.low) / span) * 100 : 100;
+  const ticks = sortStages(stages)
+    .filter((stage) => stage.threshold > 0)
+    .map((stage) => ({ id: stage.id, threshold: stage.threshold, level: row.high * (1 - stage.threshold / 100) }))
+    .filter((tick) => tick.level > row.low && span > 0);
+  return (
+    <div className={styles.row}>
+      <div className={styles.head}>
+        <strong>{indexLabel(row.index)}</strong>
+        {badge && <span className={styles.badge}>하락 단계 기준</span>}
+        <b>{value(row.close)}</b>
+      </div>
+      <div
+        className={styles.range}
+        role="img"
+        aria-label={`52주 저점 ${value(row.low)}, 고점 ${value(row.high)}, 현재 ${value(row.close)}. 저점보다 ${percent(row.risePercent)}% 높고 고점보다 ${percent(row.drawdownPercent)}% 낮습니다.`}
+      >
+        <span className={styles.fill} style={{ width: `${position}%` }} />
+        {ticks.map((tick) => (
+          <span
+            key={tick.id}
+            className={styles.tick}
+            style={{ left: `${((tick.level - row.low) / span) * 100}%` }}
+            title={`고점 대비 −${tick.threshold}%`}
+          />
+        ))}
+        <span className={styles.dot} style={{ left: `${position}%` }} />
+      </div>
+      <div className={styles.ends}>
+        <span className={styles.up}>저점 대비 +{percent(row.risePercent)}%</span>
+        <span className={styles.down}>고점 대비 −{percent(row.drawdownPercent)}%</span>
+      </div>
+      <div className={styles.levels}>
+        <span>{value(row.low)}({monthDay(row.lowDate)})</span>
+        <span>{value(row.high)}({monthDay(row.highDate)})</span>
+      </div>
+    </div>
+  );
+}
+
+export const indexCloseDay = monthDay;
