@@ -52,6 +52,10 @@ import {
   holdingValueKrw,
   holdingBucketId,
   countUnassignedAssets,
+  allocationOptionLabel,
+  evaluationAssetCount,
+  holdingStartBuckets,
+  savedNoticeTarget,
   manualAssetValueKrw,
   portfolioValues,
   type CashFlow,
@@ -78,7 +82,7 @@ export type AssetSelection = {
   kind: "stock" | "crypto" | "manual" | "candidate";
   id: string;
 };
-export type NoticeAction = { label: string; view: "strategy" | "allocation" };
+export type NoticeAction = { label: string; view: "strategy" | "allocation" | "import" };
 export function stockAssetId(holding: Holding) {
   return holding.symbol
     ? `${holding.market}:${holding.exchange ?? ""}:${holding.symbol.toUpperCase()}`
@@ -589,12 +593,14 @@ function AssetDetail({
         {stockRows.map((row) => {
           const assignment = portfolio.assignments.find((item) => item.holdingId === row.id);
           const current = assignment?.source === "manual" ? assignment.bucketId ?? "unassigned" : "auto";
+          const autoBucketId = portfolio.rules.find((rule) => rule.market === row.market && rule.symbol === row.symbol)?.bucketId;
+          const autoName = portfolio.buckets.find((bucket) => bucket.id === autoBucketId)?.name ?? null;
           return <label key={row.id}>{row.broker} · {row.account}<select aria-label={`${row.name} ${row.account} 포트 배정`} value={current} disabled={saving || assigning || editing !== null} onChange={async (event) => {
             const value = event.target.value; setAssigning(true); setError("");
             try { await onAssignStock(row.id, value === "auto" || value === "unassigned" ? null : value, value === "auto" ? "auto" : "manual"); }
             catch (error) { setError(error instanceof Error ? error.message : "배정하지 못했습니다."); }
             finally { setAssigning(false); }
-          }}><option value="auto">종목코드 규칙에 따라 자동 배정</option><option value="unassigned">직접 · 미분류</option>{portfolio.buckets.map((bucket) => <option key={bucket.id} value={bucket.id}>{bucket.name}</option>)}</select></label>;
+          }}><option value="auto">{allocationOptionLabel("auto", autoName)}</option><option value="unassigned">{allocationOptionLabel("unassigned")}</option>{portfolio.buckets.map((bucket) => <option key={bucket.id} value={bucket.id}>{bucket.name}</option>)}</select></label>;
         })}
         {(manual || crypto) && <label>포트<select value={bucketId ?? ""} aria-label={`${name} 포트 배정`} disabled={saving || assigning || editing !== null} onChange={async (event) => {
           const nextBucket = event.target.value || null; setAssigning(true); setError("");
@@ -707,9 +713,14 @@ export default function PortfolioBuilder({
   onPortfolioPresence,
   onNoticeAction,
 }: Props) {
-  const [draft, setDraft] = useState<Portfolio | null>(
+  const [draftState, setDraft] = useState<Portfolio | null>(
     () => portfolioCache.get(userId) ?? null,
   );
+  // 종목만 있는 대시보드는 저장하지 않는 빈 포트를 메모리에만 두고 본문을 그린다.
+  const previewing = !draftState && screen === "dashboard" && holdings.length > 0;
+  const previewDraft = useMemo(() => emptyPortfolio(), []);
+  const draft = draftState ?? (previewing ? previewDraft : null);
+  const assetCount = evaluationAssetCount(draft, holdings.length);
   const [loading, setLoading] = useState(() => !portfolioCache.has(userId));
   const [assetEditor, setAssetEditor] = useState<EditableAssetSelection | null>(null);
   const [saving, setSaving] = useState(false);
@@ -970,6 +981,20 @@ export default function PortfolioBuilder({
     } finally {
       setRefreshing(false);
     }
+  }
+  function beginFromHoldings() {
+    const plan = emptyPortfolio();
+    plan.buckets = holdingStartBuckets(holdings).map((bucket, index) => ({
+      id: crypto.randomUUID(),
+      name: bucket.name,
+      targetPercent: bucket.targetPercent,
+      color: colors[index % colors.length],
+    }));
+    change(plan);
+    setRuleBucketId(plan.buckets[0]?.id ?? "");
+    setManualBucketId(plan.buckets[0]?.id ?? "");
+    setStrategyTab("targets");
+    if (screen !== "strategy") onNavigate("strategy");
   }
   function begin(example: boolean) {
     const plan = emptyPortfolio();
@@ -1327,8 +1352,10 @@ export default function PortfolioBuilder({
       onPortfolioPresence(true);
       const summary = `저장 완료 · ${changedSections.join(" / ") || "변경 내용"} · 오늘 평가액 갱신`;
       const unassigned = countUnassignedAssets(payload.portfolio, holdings);
-      if (unassigned > 0 && screen !== "allocation")
-        onNoticeAction(`${summary} · 미분류 자산 ${unassigned}개가 있습니다.`, { label: "자산 배정하기", view: "allocation" });
+      const notice = unassigned > 0 ? `${summary} · 미분류 자산 ${unassigned}개가 있습니다.` : summary;
+      const target = savedNoticeTarget({ firstSave: !saved, holdingCount: holdings.length, unassigned, screen });
+      if (target === "import") onNoticeAction(notice, { label: "캡처 가져오기", view: "import" });
+      else if (target === "allocation") onNoticeAction(notice, { label: "자산 배정하기", view: "allocation" });
       else onNotice(summary);
       if (!assetsOnly)
         void fetch("/api/holdings", { cache: "no-store" })
@@ -1737,7 +1764,7 @@ export default function PortfolioBuilder({
   );
   const titles = {
     dashboard: [
-      "내 포트폴리오",
+      "대시보드",
       "전체 비중과 핵심 지표를 확인하세요.",
     ],
     strategy: [
@@ -1746,7 +1773,7 @@ export default function PortfolioBuilder({
     ],
     preferences: ["설정", "필요한 설정을 골라 변경하세요."],
     composition: [
-      "포트별 자산 비중",
+      "포트 비중",
       "현재 보유 비중과 목표의 차이를 살펴보세요.",
     ],
     allocation: [
@@ -1772,13 +1799,48 @@ export default function PortfolioBuilder({
     return (
       <div className={styles.loading}>포트폴리오를 불러오는 중입니다…</div>
     );
+  const rebalanceEmpty = (
+    <section className={styles.emptyState}>
+      {assetCount === 0 ? (
+        <>
+          <h2>리밸런싱할 자산이 없습니다</h2>
+          <p>목표 비중과 보유 자산이 있어야 조정 수량을 계산할 수 있습니다.</p>
+        </>
+      ) : (
+        <>
+          <h2>먼저 목표 비중을 정해 주세요</h2>
+          <p>목표 비중을 정하면 보유 자산과 비교해 조정 수량을 계산합니다.</p>
+        </>
+      )}
+      <div>
+        <button type="button" onClick={assetCount === 0 ? onImport : () => onNavigate("strategy")}>
+          {assetCount === 0 ? "캡처 가져오기" : "목표 정하기"}
+        </button>
+        {assetCount === 0 && !draft && (
+          <button type="button" className={styles.emptyLink} onClick={() => onNavigate("strategy")}>
+            목표 정하기
+          </button>
+        )}
+      </div>
+    </section>
+  );
+  if (!draft && screen === "rebalance")
+    return (
+      <div className={styles.builder}>
+        <div className={styles.heading}>
+          <div>
+            <h1>{titles[0]}</h1>
+            <p>{titles[1]}</p>
+          </div>
+        </div>
+        {rebalanceEmpty}
+      </div>
+    );
   if (!draft)
     return (
       <div className={styles.start}>
-        {holdings.length > 0 ? (
+        {holdings.length > 0 && (
           <p>등록한 종목 {holdings.length}개가 있습니다. 목표 비중을 정하면 현재 비중과 비교할 수 있습니다.</p>
-        ) : (
-          <p>이전에 등록한 자산이 보이지 않나요? <button type="button" onClick={() => onNavigate("settings")}>로그인 계정 확인</button></p>
         )}
         <h1>내 투자 원칙부터 정해보세요.</h1>
         <p>
@@ -1786,6 +1848,11 @@ export default function PortfolioBuilder({
           연결할 수 있습니다.
         </p>
         <div>
+          {holdings.length > 0 && (
+            <button type="button" onClick={beginFromHoldings}>
+              보유 기준으로 시작
+            </button>
+          )}
           <button onClick={() => begin(true)}>
             예시 구성으로 시작
           </button>
@@ -1795,6 +1862,14 @@ export default function PortfolioBuilder({
           예시 비중은 자유롭게 수정할 수 있습니다. 저장하기 전까지 계정에
           반영되지 않습니다.
         </small>
+        {holdings.length === 0 && (
+          <p>
+            이전에 등록한 자산이 보이지 않나요?{" "}
+            <button type="button" className={styles.startHelp} onClick={() => onNavigate("settings")}>
+              로그인 계정 확인
+            </button>
+          </p>
+        )}
       </div>
     );
 
@@ -1821,7 +1896,7 @@ export default function PortfolioBuilder({
             <p>{titles[1]}</p>
           </div>
           <div>
-            {screen !== "preferences" && <button
+            {screen !== "preferences" && holdings.length + draft.cryptoAssets.length > 0 && <button
               className={styles.ghost}
               onClick={refresh}
               disabled={refreshing || quotesRefreshing}
@@ -1902,9 +1977,15 @@ export default function PortfolioBuilder({
         />
       )}
 
+      {previewing && (
+        <div className={styles.targetBand}>
+          <p>목표 비중을 정하면 현재 비중과 비교할 수 있습니다.</p>
+          <button type="button" onClick={() => onNavigate("strategy")}>목표 정하기</button>
+        </div>
+      )}
       {screen === "dashboard" && <PortfolioDashboard
         total={values?.total ?? 0} gain={displayedGain} percent={displayedGainPercent} gainView={gainView} gainNote={displayedGainNote}
-        refreshing={refreshing || quotesRefreshing} onRefresh={refresh} controls={dashboardControls}
+        refreshing={refreshing || quotesRefreshing} onRefresh={(values?.total ?? 0) > 0 ? refresh : undefined} controls={dashboardControls}
         onEdit={onEditHoldings} onHistory={()=>onNavigate("history")} onComposition={()=>onNavigate("composition")} onRebalance={()=>onNavigate("rebalance")}
         composition={<PortfolioVisuals portfolio={draft} holdings={holdings}/>}
         market={<IndexOverview overview={indexOverview} plan={draft.drawdownPlan ?? null} />}
@@ -2030,12 +2111,14 @@ export default function PortfolioBuilder({
                           }}
                         />
                       </div>
-                      <small>
-                        현재 {pct(currentPercent)} · 목표 차이{" "}
-                        {currentPercent - bucket.targetPercent > 0 ? "+" : ""}
-                        {(currentPercent - bucket.targetPercent).toFixed(1)}%p ·{" "}
-                        {fmt(current)}
-                      </small>
+                      {values && values.total > 0 && (
+                        <small>
+                          현재 {pct(currentPercent)} · 목표 차이{" "}
+                          {currentPercent - bucket.targetPercent > 0 ? "+" : ""}
+                          {(currentPercent - bucket.targetPercent).toFixed(1)}%p ·{" "}
+                          {fmt(current)}
+                        </small>
+                      )}
                     </div>
                     <label>
                       목표{" "}
@@ -2220,26 +2303,6 @@ export default function PortfolioBuilder({
       )}
       {(screen === "allocation" || screen === "edit") && (
         <>
-          {screen === "allocation" && (
-            <div className={styles.vizDisclosure}>
-              <div>
-                <strong>자산 지도를 더 자세히 보고 싶나요?</strong>
-                <span>종목·포트·증권사별 비중을 3D로 탐색할 수 있습니다.</span>
-              </div>
-              <button
-                type="button"
-                aria-expanded={show3d}
-                onClick={() => setShow3d((value) => !value)}
-              >
-                {show3d ? "3D 분석 접기" : "3D 분석 열기"}{" "}
-                <ChevronDown size={16} />
-              </button>
-            </div>
-          )}
-          {screen === "allocation" && show3d && (
-            <Portfolio3D portfolio={draft} holdings={holdings} />
-          )}
-
 
           <AssetSections className={screen === "edit" ? styles.editorGroups : `${styles.panel} ${styles.collapsible}`} {...(screen === "allocation" ? {open:true} : {})}>
             {screen === "allocation" && (
@@ -2312,18 +2375,19 @@ export default function PortfolioBuilder({
                             }
                           >
                             <option value="auto">
-                              자동{" "}
-                              {autoBucket
-                                ? `· ${draft.buckets.find((bucket) => bucket.id === autoBucket)?.name}`
-                                : "· 미분류"}
+                              {allocationOptionLabel(
+                                "auto",
+                                draft.buckets.find((bucket) => bucket.id === autoBucket)?.name,
+                              )}
                             </option>
-                            <option value="unassigned">직접 · 미분류</option>
+                            <option value="unassigned">{allocationOptionLabel("unassigned")}</option>
                             {draft.buckets.map((bucket) => (
                               <option key={bucket.id} value={bucket.id}>
-                                직접 · {bucket.name}
+                                {allocationOptionLabel("bucket", bucket.name)}
                               </option>
                             ))}
                           </select>
+                          {selection === "auto" && <small>자동 배정됨</small>}
                         </div>
                       );
                     })}
@@ -2582,6 +2646,25 @@ export default function PortfolioBuilder({
               </>
             )}
           </AssetSections>
+          {screen === "allocation" && (
+            <div className={styles.vizDisclosure}>
+              <div>
+                <strong>자산 지도를 더 자세히 보고 싶나요?</strong>
+                <span>종목·포트·증권사별 비중을 3D로 탐색할 수 있습니다.</span>
+              </div>
+              <button
+                type="button"
+                aria-expanded={show3d}
+                onClick={() => setShow3d((value) => !value)}
+              >
+                {show3d ? "3D 분석 접기" : "3D 분석 열기"}{" "}
+                <ChevronDown size={16} />
+              </button>
+            </div>
+          )}
+          {screen === "allocation" && show3d && (
+            <Portfolio3D portfolio={draft} holdings={holdings} />
+          )}
           {screen === "edit" && dirty && (
             <div className={styles.assetEditorSave}>
               <SaveStatus dirty={dirty} saving={saving} onSave={save} saveLabel="자산 변경 저장" />
@@ -2597,8 +2680,9 @@ export default function PortfolioBuilder({
           </div>
         </div>
       )}
-      {screen === "rebalance" && <DrawdownNotice portfolio={draft} drawdown={indexDrawdown} onReview={() => { setStrategyTab("drawdown"); onNavigate("strategy"); }} />}
-      {screen === "rebalance" && <RebalancePlans
+      {screen === "rebalance" && assetCount === 0 && rebalanceEmpty}
+      {screen === "rebalance" && assetCount > 0 && <DrawdownNotice portfolio={draft} drawdown={indexDrawdown} onReview={() => { setStrategyTab("drawdown"); onNavigate("strategy"); }} />}
+      {screen === "rebalance" && assetCount > 0 && <RebalancePlans
         userId={userId} portfolio={draft} holdings={holdings} disabled={dirty||saving}
         canStart={rebalanceReady&&(advice.trades.length+advice.cryptoTrades.length)>0}
         config={{mode:rebalanceMode,newCash:rebalanceMode === "add-only"&&budgetMode === "theoretical"?null:cashInput.trim()&&Number.isFinite(Number(cashInput))?Math.min(1e15,Math.max(0,Number(cashInput))):0,
@@ -3213,7 +3297,7 @@ export default function PortfolioBuilder({
           </details>
         </>}
       />}
-      {screen === "rebalance" && <ReviewSettings userId={userId} compact onSettings={()=>{setRequestedPreferenceTab("review");onNavigate("preferences");}} onDirty={setReviewDirty}/>}
+      {screen === "rebalance" && assetCount > 0 && <ReviewSettings userId={userId} compact onSettings={()=>{setRequestedPreferenceTab("review");onNavigate("preferences");}} onDirty={setReviewDirty}/>}
       {screen === "history" && (
         <>
           <section className={styles.panel}>

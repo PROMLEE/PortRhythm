@@ -33,7 +33,7 @@ export default function PortfolioDashboard({
   gainView: "total" | "daily";
   gainNote: string;
   refreshing: boolean;
-  onRefresh: () => void;
+  onRefresh?: () => void;
   controls: ReactNode;
   children: ReactNode;
   composition: ReactNode;
@@ -54,19 +54,21 @@ export default function PortfolioDashboard({
         <section className={styles.hero} aria-label="내 자산 요약">
           <div className={styles.heroHead}>
             <h1>총 평가액</h1>
-            <button
-              type="button"
-              className={styles.refresh}
-              onClick={onRefresh}
-              disabled={refreshing}
-              aria-label="시세 새로고침"
-            >
-              <RefreshCw
-                size={17}
-                className={refreshing ? styles.spinning : ""}
-              />
-              <span>{refreshing ? "갱신 중" : "시세 갱신"}</span>
-            </button>
+            {onRefresh && (
+              <button
+                type="button"
+                className={styles.refresh}
+                onClick={onRefresh}
+                disabled={refreshing}
+                aria-label="시세 새로고침"
+              >
+                <RefreshCw
+                  size={17}
+                  className={refreshing ? styles.spinning : ""}
+                />
+                <span>{refreshing ? "갱신 중" : "시세 갱신"}</span>
+              </button>
+            )}
           </div>
           <div className={styles.total}>
             {money.format(total)}

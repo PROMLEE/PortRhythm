@@ -290,3 +290,55 @@ export const EXAMPLE_RULES: {
     name: "ACE KRX금현물",
   },
 ];
+
+const START_MARKETS: Market[] = ["KR", "US"];
+const START_MARKET_NAMES: Record<Market, string> = { KR: "국내 주식", US: "미국 주식" };
+
+/** 보유 종목이 있는 시장마다 시작 포트를 만든다. 비중은 균등하고, 나눠 떨어지지 않는 나머지는 첫 포트에 넣는다. */
+export function holdingStartBuckets(
+  holdings: { market: Market }[],
+): { market: Market; name: string; targetPercent: number }[] {
+  const markets = START_MARKETS.filter((market) =>
+    holdings.some((holding) => holding.market === market),
+  );
+  if (markets.length === 0) return [];
+  const share = Math.floor(100 / markets.length);
+  return markets.map((market, index) => ({
+    market,
+    name: START_MARKET_NAMES[market],
+    targetPercent: index === 0 ? 100 - share * (markets.length - 1) : share,
+  }));
+}
+
+/** 종목 배정 select의 옵션 라벨. 자동 배정은 종목코드 규칙이 가리키는 포트 이름을 붙인다. */
+export function allocationOptionLabel(
+  option: "auto" | "unassigned" | "bucket",
+  bucketName?: string | null,
+): string {
+  if (option === "auto") return `자동 배정 · ${bucketName || "미분류"}`;
+  if (option === "unassigned") return "미분류";
+  return bucketName || "미분류";
+}
+
+/** 리밸런싱 대상 자산 수(보유 주식 + 가상자산 + 현금·직접 입력). 목표가 없으면 보유 주식만 센다. 0이면 리밸런싱 빈 상태를 보인다. */
+export function evaluationAssetCount(
+  portfolio: Pick<Portfolio, "cryptoAssets" | "manualAssets"> | null,
+  holdingCount: number,
+): number {
+  return (
+    holdingCount +
+    (portfolio ? portfolio.cryptoAssets.length + portfolio.manualAssets.length : 0)
+  );
+}
+
+/** 저장 후 알림 버튼 목적지. 첫 저장이고 보유 자산이 없으면 캡처 가져오기, 미분류 자산이 있으면 자산 배정. */
+export function savedNoticeTarget(input: {
+  firstSave: boolean;
+  holdingCount: number;
+  unassigned: number;
+  screen: string;
+}): "import" | "allocation" | null {
+  if (input.firstSave && input.holdingCount === 0) return "import";
+  if (input.unassigned > 0 && input.screen !== "allocation") return "allocation";
+  return null;
+}

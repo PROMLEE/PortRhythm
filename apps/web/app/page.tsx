@@ -434,6 +434,7 @@ export default function PortfolioPage() {
     [holdings,fxEnabled,fxSettings],
   );
 
+  const holdingsEmpty = view === "holdings" && !loading && holdings.length === 0;
   const shown = useMemo(
     () =>
       holdings
@@ -1265,7 +1266,7 @@ export default function PortfolioPage() {
                   </p>
                 </div>
               </div>
-              {view === "holdings" && (
+              {view === "holdings" && !holdingsEmpty && (
                 <div className={styles.holdingStats}>
                   <div>
                     <span>국내 평가금액</span>
@@ -1275,7 +1276,7 @@ export default function PortfolioPage() {
                     <span>국내 평가손익</span>
                     <strong
                       className={
-                        totals.gain.KR >= 0
+                        !totals.costKnown.KR ? undefined : totals.gain.KR >= 0
                           ? styles.gainPositive
                           : styles.gainNegative
                       }
@@ -1304,7 +1305,7 @@ export default function PortfolioPage() {
                     <span>미국 평가손익{fxEnabled?" · 환율 포함":" · USD"}</span>
                     <strong
                       className={
-                        totals.gain.US >= 0
+                        !totals.costKnown.US ? undefined : totals.gain.US >= 0
                           ? styles.gainPositive
                           : styles.gainNegative
                       }
@@ -1357,7 +1358,7 @@ export default function PortfolioPage() {
                 </div>
               )}
               <section className={`${styles.panel} ${view === "holdings" ? styles.positionsPanel : ""}`}>
-                <div className={styles.toolbar}>
+                {!holdingsEmpty && <div className={styles.toolbar}>
                   <div className={styles.tabs}>
                     {(["ALL", "KR", "US"] as const).map((item) => (
                       <button
@@ -1383,15 +1384,15 @@ export default function PortfolioPage() {
                     />
                   </label>
                   <AssetSortSelect value={assetSort} onChange={chooseAssetSort} className={styles.assetSort} marketGrouped={filter === "ALL"} />
-                </div>
-                <div className={`${styles.tableHead} ${styles.editTableHead}`}>
+                </div>}
+                {!holdingsEmpty && <div className={`${styles.tableHead} ${styles.editTableHead}`}>
                   <span>종목</span>
                   <span>보유 수량</span>
                   <span>{view === "edit" ? "현재가" : "현재가 / 평균 매입가"}</span>
                   <span>평가액</span>
                   <span>평가손익</span>
                   <span />
-                </div>
+                </div>}
                 {shown.length ? (
                   shown.map((row) => {
                     const price = row.currentPrice ?? row.capturedPrice;
@@ -1543,6 +1544,14 @@ export default function PortfolioPage() {
                       </Fragment>
                     );
                   })
+                ) : holdingsEmpty ? (
+                  <div className={styles.holdingsEmpty}>
+                    <strong>아직 등록한 종목이 없습니다.</strong>
+                    <div>
+                      <button type="button" onClick={() => go("import")}>캡처 가져오기</button>
+                      <button type="button" className={styles.emptyLink} onClick={() => go("accounts")}>직접 추가</button>
+                    </div>
+                  </div>
                 ) : (
                   <Empty onImport={() => go("import")} loading={loading} />
                 )}
@@ -1867,9 +1876,9 @@ export default function PortfolioPage() {
           const { Icon } = item;
           const label =
             id === "portfolio"
-              ? "자산"
+              ? "대시보드"
               : id === "composition"
-                ? "비중"
+                ? "포트 비중"
                 : "리밸런싱";
           return (
             <button
