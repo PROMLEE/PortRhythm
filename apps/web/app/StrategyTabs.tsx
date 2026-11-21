@@ -1,14 +1,13 @@
 "use client";
 
 import { useId, useRef, type ReactNode } from "react";
-import { Calculator, PieChart, TrendingDown } from "lucide-react";
 import styles from "./PreferencesTabs.module.css";
 import own from "./StrategyTabs.module.css";
 
 const tabs = [
-  { id: "targets", label: "목표 비중", Icon: PieChart },
-  { id: "drawdown", label: "하락 단계", Icon: TrendingDown },
-  { id: "calculation", label: "리밸런싱 계산", Icon: Calculator },
+  { id: "targets", label: "목표 비중" },
+  { id: "drawdown", label: "하락 단계" },
+  { id: "calculation", label: "리밸런싱 계산" },
 ] as const;
 export type StrategyTab = (typeof tabs)[number]["id"];
 
@@ -29,7 +28,7 @@ export default function StrategyTabs({
   return (
     <div className={own.strategy}>
       <div ref={nav} className={`${styles.tabs} ${own.tabs}`} role="tablist" aria-label="목표 설계 분류">
-        {tabs.map(({ id: tab, label, Icon }, index) => (
+        {tabs.map(({ id: tab, label }, index) => (
           <button
             key={tab}
             id={`${id}-${tab}-tab`}
@@ -51,7 +50,6 @@ export default function StrategyTabs({
               nav.current?.querySelectorAll<HTMLButtonElement>("button")[next]?.focus();
             }}
           >
-            <Icon size={17} aria-hidden="true" />
             <span>{label}</span>
             {attention?.[tab] && <i className={styles.unsaved} role="img" aria-label={attention[tab]} />}
           </button>

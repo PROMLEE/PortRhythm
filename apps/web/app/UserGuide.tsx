@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
-import { ArrowDown, ArrowRight, Check, ChevronRight } from "lucide-react";
+import { ArrowDown, Check, ChevronRight } from "lucide-react";
 import styles from "./UserGuide.module.css";
 
 const AveragePriceCalculator = dynamic(() => import("./AveragePriceCalculator"));
@@ -170,7 +170,6 @@ export default function UserGuide({
     return onNavigate ? (
       <button type="button" onClick={() => onNavigate(destination)}>
         {label}
-        <ArrowRight size={16} />
       </button>
     ) : null;
   }
@@ -189,7 +188,7 @@ export default function UserGuide({
           </p>
           {!onNavigate && (
             <a className={styles.loginLink} href="/">
-              로그인하고 시작하기 <ArrowRight size={16} />
+              로그인하고 시작하기
             </a>
           )}
           <a className={styles.scrollCue} href="#guide-start">
@@ -325,7 +324,6 @@ export default function UserGuide({
         ) : (
           <a href="/">
             로그인하고 시작하기
-            <ArrowRight size={16} />
           </a>
         )}
       </footer>

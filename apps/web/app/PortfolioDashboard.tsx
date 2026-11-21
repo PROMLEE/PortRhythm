@@ -1,7 +1,6 @@
 "use client";
 import type { ReactNode } from "react";
 import {
-  ArrowRight,
   ChartNoAxesCombined,
   PieChart,
   RefreshCw,
@@ -92,12 +91,10 @@ export default function PortfolioDashboard({
             <button type="button" onClick={onComposition}>
               <PieChart size={17} />
               포트 비중
-              <ArrowRight size={14} />
             </button>
             <button type="button" onClick={onHistory}>
               <ChartNoAxesCombined size={17} />
               자산 추이
-              <ArrowRight size={14} />
             </button>
           </div>
         </section>
@@ -106,7 +103,6 @@ export default function PortfolioDashboard({
             <h2>보유 자산</h2>
             <button type="button" onClick={onEdit}>
               자산 관리
-              <ArrowRight size={14} />
             </button>
           </div>
           <div className={styles.controls}>{controls}</div>
@@ -118,12 +114,10 @@ export default function PortfolioDashboard({
       <aside className={styles.aside} aria-label="포트폴리오 점검">
         {composition}
         <section className={styles.target}>
-          <span>목표 비중 점검</span>
           <h2>{targetTitle}</h2>
           <p>{targetDetail}</p>
           <button type="button" onClick={onRebalance}>
             리밸런싱 확인
-            <ArrowRight size={17} />
           </button>
         </section>
         {market}

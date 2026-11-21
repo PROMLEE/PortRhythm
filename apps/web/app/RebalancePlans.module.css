@@ -5,9 +5,7 @@
 }
 .nav {
   display: flex;
-  gap: 8px;
   align-items: center;
-  margin-bottom: 16px;
 }
 .nav button,
 .actions button,
@@ -22,14 +20,7 @@
   font: inherit;
 }
 .nav .selected {
-  color: var(--ink);
-  font-weight: 750;
-  background: var(--soft);
   border-radius: var(--radius-sm);
-}
-.nav .refresh {
-  margin-left: auto;
-  display: flex;
 }
 .start {
   position: sticky;
@@ -58,9 +49,6 @@
   /* Sit above the fixed bottom navigation. */
   .start {
     bottom: calc(64px + env(safe-area-inset-bottom));
-    padding-bottom: 12px;
-  }
-  .start {
     padding-top: 10px;
     padding-bottom: 10px;
   }
@@ -94,7 +82,6 @@
   font: inherit;
   font-weight: 700;
   border: 0;
-  border-radius: var(--radius-sm);
   padding: 12px 16px;
   cursor: pointer;
 }
@@ -113,22 +100,18 @@
 }
 .detail h2,
 .history h2 {
-  font-size: 18px;
   margin: 0 0 6px;
 }
 .detail h3 {
-  font-size: 14px;
   margin: 20px 0 4px;
 }
 .progress {
   appearance: none;
   display: block;
   width: 100%;
-  height: 5px;
   border: 0;
   border-radius: var(--radius-sm);
   overflow: hidden;
-  margin: 14px 0 10px;
 }
 .progress::-webkit-progress-bar {
   background: var(--line);
