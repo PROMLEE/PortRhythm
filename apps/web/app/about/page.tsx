@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, ArrowUpRight, SlidersHorizontal, Layers3, RefreshCw } from "lucide-react";
+import { ArrowUpRight, SlidersHorizontal, Layers3, RefreshCw } from "lucide-react";
 import Experience, { RebalanceDemo } from "./Experience";
 import styles from "./about.module.css";
 
@@ -42,12 +42,12 @@ export default function AboutPage() {
           <section className={styles.hero}>
             <div>
               <h1>투자는<br />나만의 리듬으로.</h1>
-              <p><strong>내 기준을 지키며, 꾸준히.</strong>국내·미국 주식과 ETF, 가상자산, 현금을 함께 관리하고,<br className={styles.desktopBreak} /> 목표 비중에 맞는 리밸런싱을 준비하세요.</p>
-              <div className={styles.actions}><Link href="/" className={styles.primary}>내 포트폴리오 시작하기 <ArrowRight size={18} /></Link><a href="#how-it-works" className={styles.textLink}>어떻게 관리하나요? ↓</a></div>
+              <p>국내·미국 주식과 ETF, 가상자산, 현금을 함께 관리하고,<br className={styles.desktopBreak} /> 목표 비중에 맞는 리밸런싱을 준비하세요.</p>
+              <div className={styles.actions}><Link href="/" className={styles.primary}>내 포트폴리오 시작하기</Link><a href="#how-it-works" className={styles.textLink}>어떻게 관리하나요? ↓</a></div>
               <span className={styles.assetScope}>국내·미국 주식 / 가상자산 / 현금</span>
             </div>
             <figure className={styles.heroVisual}>
-              <div className={styles.visualBackdrop}><span>목표를 정하고.<br />현재를 확인하고.<br />필요할 때 조정하고.</span></div>
+              <div className={styles.visualBackdrop}><span>목표 비중과 현재 비중의 차이를 한 화면에서.</span></div>
               <img src="/about/mobile-dashboard.jpg" width={390} height={844} alt="총 평가액, 일간 손익, 정렬한 종목을 보여주는 PortRhythm 모바일 대시보드" fetchPriority="high" />
             </figure>
           </section>
@@ -98,7 +98,7 @@ export default function AboutPage() {
             </div>
           </section>
 
-          <section className={styles.finalCta}><h2>내 기준으로 시작하고,<br />꾸준히 확인하세요.</h2><Link href="/" className={styles.primary}>PortRhythm 시작하기 <ArrowRight size={18} /></Link><Link href="/guide" className={styles.textLink}>먼저 사용 가이드 보기</Link></section>
+          <section className={styles.finalCta}><h2>내 기준으로 시작하고,<br />꾸준히 확인하세요.</h2><Link href="/" className={styles.primary}>PortRhythm 시작하기</Link><Link href="/guide" className={styles.textLink}>먼저 사용 가이드 보기</Link></section>
         </main>
       </Experience>
       <footer className={styles.footer}><span>© {new Date().getFullYear()} PROMLEE · PortRhythm</span><nav aria-label="서비스 관련 링크"><Link href="/notices">공지사항</Link><Link href="/guide">사용 가이드</Link><a href="https://github.com/PROMLEE/pf" target="_blank" rel="noopener noreferrer">GitHub<span className={styles.srOnly}> (새 탭)</span></a><a href="https://github.com/PROMLEE/pf/issues" target="_blank" rel="noopener noreferrer">문의·기능 제안<span className={styles.srOnly}> (새 탭)</span></a></nav></footer>
