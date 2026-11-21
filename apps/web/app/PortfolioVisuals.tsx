@@ -25,6 +25,7 @@ export default function PortfolioVisuals({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const { values, unassigned, total } = portfolioValues(portfolio, holdings);
   const hasValues = total > 0;
+  const hasTargets = portfolio.buckets.length > 0;
   const showTarget = mode === "target" || !hasValues;
   const targetTotal = portfolio.buckets.reduce(
     (sum, bucket) => sum + bucket.targetPercent,
@@ -81,7 +82,7 @@ export default function PortfolioVisuals({
             <p>포트를 선택하면 상세 금액을 볼 수 있어요.</p>
           </div>
         )}
-        {hasValues && (
+        {hasValues && hasTargets && (
           <div
             className={styles.allocationSwitch}
             role="group"
@@ -215,7 +216,7 @@ export default function PortfolioVisuals({
                     : styles.allocationOver
                 }
               >
-                {hasValues
+                {hasValues && item.id !== "unassigned"
                   ? `${item.actual - item.target > 0 ? "+" : ""}${(item.actual - item.target).toFixed(1)}%p`
                   : "—"}
               </span>
@@ -227,7 +228,12 @@ export default function PortfolioVisuals({
               보여줍니다.
             </p>
           )}
-          {showTarget && targetTotal !== 100 && (
+          {hasValues && !hasTargets && (
+            <p className={styles.allocationHint}>
+              목표 비중을 정하면 포트별 차이를 보여 줍니다.
+            </p>
+          )}
+          {hasTargets && showTarget && targetTotal !== 100 && (
             <p className={styles.allocationHint}>
               목표 합계 {percent(targetTotal)} · 저장하려면 100%로 맞춰 주세요.
             </p>

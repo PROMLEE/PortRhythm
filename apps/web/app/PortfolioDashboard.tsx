@@ -21,6 +21,7 @@ export default function PortfolioDashboard({
   targetTitle,
   targetDetail,
   onRebalance,
+  targetAction = "리밸런싱 확인",
   onComposition,
   onHistory,
   onEdit,
@@ -40,6 +41,7 @@ export default function PortfolioDashboard({
   targetTitle: string;
   targetDetail: string;
   onRebalance: () => void;
+  targetAction?: string;
   onComposition: () => void;
   market?: ReactNode;
   onHistory: () => void;
@@ -119,7 +121,7 @@ export default function PortfolioDashboard({
           <h2>{targetTitle}</h2>
           <p>{targetDetail}</p>
           <button type="button" onClick={onRebalance}>
-            리밸런싱 확인
+            {targetAction}
           </button>
         </section>
         {market}

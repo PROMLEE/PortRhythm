@@ -1986,11 +1986,12 @@ export default function PortfolioBuilder({
       {screen === "dashboard" && <PortfolioDashboard
         total={values?.total ?? 0} gain={displayedGain} percent={displayedGainPercent} gainView={gainView} gainNote={displayedGainNote}
         refreshing={refreshing || quotesRefreshing} onRefresh={(values?.total ?? 0) > 0 ? refresh : undefined} controls={dashboardControls}
-        onEdit={onEditHoldings} onHistory={()=>onNavigate("history")} onComposition={()=>onNavigate("composition")} onRebalance={()=>onNavigate("rebalance")}
+        onEdit={onEditHoldings} onHistory={()=>onNavigate("history")} onComposition={()=>onNavigate("composition")} onRebalance={()=>onNavigate(previewing ? "strategy" : "rebalance")}
+        targetAction={previewing ? "목표 정하기" : undefined}
         composition={<PortfolioVisuals portfolio={draft} holdings={holdings}/>}
         market={<IndexOverview overview={indexOverview} plan={draft.drawdownPlan ?? null} />}
-        targetTitle={rebalanceReady ? driftItems.length ? `${driftItems.length}개 포트 조정 필요` : "목표 범위 안에 있어요" : "배정·가격 확인 필요"}
-        targetDetail={!rebalanceReady ? "미분류 자산과 시세를 확인하세요." : driftItems.length ? "정해둔 목표와 현재 비중의 차이를 확인하세요." : "다음 점검 때도 나의 투자 원칙을 이어가세요."}
+        targetTitle={previewing ? "목표 비중이 아직 없어요" : rebalanceReady ? driftItems.length ? `${driftItems.length}개 포트 조정 필요` : "목표 범위 안에 있어요" : "배정·가격 확인 필요"}
+        targetDetail={previewing ? "목표를 정하면 지금 비중과 비교해 사고팔 금액을 계산합니다." : !rebalanceReady ? "미분류 자산과 시세를 확인하세요." : driftItems.length ? "정해둔 목표와 현재 비중의 차이를 확인하세요." : "다음 점검 때도 나의 투자 원칙을 이어가세요."}
         metadata={<>{quotesRefreshing && <span>시세 갱신 중</span>}{(quoteError || cryptoRefreshError || fxRefreshError) && <p role="status">{quoteError || cryptoRefreshError || fxRefreshError}</p>}{Boolean(values?.missingPrices) && <span>가격 미확인 자산 {values?.missingPrices}개</span>}</>}
       >
         <AssetList investments={mobileInvestments} manualAssets={draft.manualAssets} includeFx={Boolean(draft.includeFxGains)} previousFx={dailyFxRate} usdKrw={draft.usdKrw} gainView={gainView} dailyLoading={quotesRefreshing || cryptoRefreshing} onSelectAsset={onSelectAsset} assetSort={assetSort}/>
