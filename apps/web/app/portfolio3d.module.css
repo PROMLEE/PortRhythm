@@ -37,7 +37,7 @@
   background: transparent;
   color: #8190a4;
   padding: 7px 12px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 750;
 }
 .modes .active {
@@ -94,7 +94,7 @@
 }
 .focus small {
   color: #7290be;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
 }
 .focus strong {
@@ -109,7 +109,7 @@
 }
 .focus span {
   color: #6180ad;
-  font-size: 10px;
+  font-size: 11px;
 }
 .list {
   display: grid;
@@ -144,17 +144,17 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 10px;
+  font-size: 11px;
   color: #4c5d75;
 }
 .list b {
   color: #314a70;
-  font-size: 10px;
+  font-size: 11px;
 }
 .note,
 .empty {
   color: #91a0b2;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.5;
 }
 .note {

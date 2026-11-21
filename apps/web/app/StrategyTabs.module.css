@@ -1,4 +1,6 @@
 .strategy { min-width: 0; }
-.strategy > .tabs { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 20px; }
+.strategy > .tabs { display: flex; grid-template-columns: none; gap: 16px; margin-bottom: 12px; padding: 0; border-radius: 0; background: none; }
+.strategy .tabs button { min-height: 32px; height: 32px; padding: 0; gap: 0; border-radius: 0; background: none; box-shadow: none; color: var(--muted); font-size: 14px; font-weight: 500; }
+.strategy .tabs button[aria-selected="true"] { background: none; box-shadow: none; color: var(--ink); font-weight: 800; }
 .panel { display: grid; gap: 20px; min-width: 0; }
 .panel[hidden] { display: none; }

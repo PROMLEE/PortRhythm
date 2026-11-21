@@ -3,7 +3,7 @@
 import { withPreviousQuotes } from "./holdings";
 
 import { useEffect, useState } from "react";
-import { Plus, Pencil, ArrowRight, Wallet } from "lucide-react";
+import { Plus, Pencil, Wallet } from "lucide-react";
 import type { Holding, Market } from "./holdings";
 import {
   accountValuation,
@@ -1015,7 +1015,6 @@ export default function AccountsManager({
                           <small>
                             {row.market === "KR" ? "국내" : "미국"} ·{" "}
                             {row.symbol}
-                            <ArrowRight size={12} />
                           </small>
                         </button>
                       </div>

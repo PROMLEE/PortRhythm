@@ -22,7 +22,6 @@ import { portfolioCache, tradePortfolioEvent } from "./portfolio-cache";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ArrowRight,
   Camera,
   Coins,
   Wallet,
@@ -53,6 +52,10 @@ import {
   holdingValueKrw,
   holdingBucketId,
   countUnassignedAssets,
+  allocationOptionLabel,
+  evaluationAssetCount,
+  holdingStartBuckets,
+  savedNoticeTarget,
   manualAssetValueKrw,
   portfolioValues,
   type CashFlow,
@@ -79,7 +82,7 @@ export type AssetSelection = {
   kind: "stock" | "crypto" | "manual" | "candidate";
   id: string;
 };
-export type NoticeAction = { label: string; view: "strategy" | "allocation" };
+export type NoticeAction = { label: string; view: "strategy" | "allocation" | "import" };
 export function stockAssetId(holding: Holding) {
   return holding.symbol
     ? `${holding.market}:${holding.exchange ?? ""}:${holding.symbol.toUpperCase()}`
@@ -590,12 +593,14 @@ function AssetDetail({
         {stockRows.map((row) => {
           const assignment = portfolio.assignments.find((item) => item.holdingId === row.id);
           const current = assignment?.source === "manual" ? assignment.bucketId ?? "unassigned" : "auto";
+          const autoBucketId = portfolio.rules.find((rule) => rule.market === row.market && rule.symbol === row.symbol)?.bucketId;
+          const autoName = portfolio.buckets.find((bucket) => bucket.id === autoBucketId)?.name ?? null;
           return <label key={row.id}>{row.broker} · {row.account}<select aria-label={`${row.name} ${row.account} 포트 배정`} value={current} disabled={saving || assigning || editing !== null} onChange={async (event) => {
             const value = event.target.value; setAssigning(true); setError("");
             try { await onAssignStock(row.id, value === "auto" || value === "unassigned" ? null : value, value === "auto" ? "auto" : "manual"); }
             catch (error) { setError(error instanceof Error ? error.message : "배정하지 못했습니다."); }
             finally { setAssigning(false); }
-          }}><option value="auto">종목코드 규칙에 따라 자동 배정</option><option value="unassigned">직접 · 미분류</option>{portfolio.buckets.map((bucket) => <option key={bucket.id} value={bucket.id}>{bucket.name}</option>)}</select></label>;
+          }}><option value="auto">{allocationOptionLabel("auto", autoName)}</option><option value="unassigned">{allocationOptionLabel("unassigned")}</option>{portfolio.buckets.map((bucket) => <option key={bucket.id} value={bucket.id}>{bucket.name}</option>)}</select></label>;
         })}
         {(manual || crypto) && <label>포트<select value={bucketId ?? ""} aria-label={`${name} 포트 배정`} disabled={saving || assigning || editing !== null} onChange={async (event) => {
           const nextBucket = event.target.value || null; setAssigning(true); setError("");
@@ -677,7 +682,7 @@ function RebalanceCandidateDetail({rule,portfolio,holdings,onBack,onOpenHolding,
     <p className={styles.candidateNote}>{rows.length ? "이 제안은 신규 보유 항목으로 계산했습니다. 같은 종목의 기존 보유 정보도 확인해 주세요." : "아직 보유 자산에 등록되지 않은 신규 매수 후보입니다."}</p>
     {rows.length > 0 && <div className={styles.detailAccounts}><h3>동일 종목의 보유 계좌</h3>{rows.map(row => <div key={row.id}><span>{row.broker} · {row.account}<small>{quantityFormat.format(row.quantity)}주</small></span><button type="button" onClick={() => onOpenHolding(row.id)}>상세·수정</button></div>)}</div>}
     {!rows.length && <p className={styles.help}>실제 매수한 수량과 매입단가는 거래 후 등록해 주세요.</p>}
-    <button type="button" className={styles.detailEdit} onClick={onRegister}>계좌에 보유 종목 등록 <ArrowRight size={16} /></button>
+    <button type="button" className={styles.detailEdit} onClick={onRegister}>계좌에 보유 종목 등록</button>
   </section>;
 }
 
@@ -708,9 +713,14 @@ export default function PortfolioBuilder({
   onPortfolioPresence,
   onNoticeAction,
 }: Props) {
-  const [draft, setDraft] = useState<Portfolio | null>(
+  const [draftState, setDraft] = useState<Portfolio | null>(
     () => portfolioCache.get(userId) ?? null,
   );
+  // 종목만 있는 대시보드는 저장하지 않는 빈 포트를 메모리에만 두고 본문을 그린다.
+  const previewing = !draftState && screen === "dashboard" && holdings.length > 0;
+  const previewDraft = useMemo(() => emptyPortfolio(), []);
+  const draft = draftState ?? (previewing ? previewDraft : null);
+  const assetCount = evaluationAssetCount(draft, holdings.length);
   const [loading, setLoading] = useState(() => !portfolioCache.has(userId));
   const [assetEditor, setAssetEditor] = useState<EditableAssetSelection | null>(null);
   const [saving, setSaving] = useState(false);
@@ -971,6 +981,20 @@ export default function PortfolioBuilder({
     } finally {
       setRefreshing(false);
     }
+  }
+  function beginFromHoldings() {
+    const plan = emptyPortfolio();
+    plan.buckets = holdingStartBuckets(holdings).map((bucket, index) => ({
+      id: crypto.randomUUID(),
+      name: bucket.name,
+      targetPercent: bucket.targetPercent,
+      color: colors[index % colors.length],
+    }));
+    change(plan);
+    setRuleBucketId(plan.buckets[0]?.id ?? "");
+    setManualBucketId(plan.buckets[0]?.id ?? "");
+    setStrategyTab("targets");
+    if (screen !== "strategy") onNavigate("strategy");
   }
   function begin(example: boolean) {
     const plan = emptyPortfolio();
@@ -1328,8 +1352,10 @@ export default function PortfolioBuilder({
       onPortfolioPresence(true);
       const summary = `저장 완료 · ${changedSections.join(" / ") || "변경 내용"} · 오늘 평가액 갱신`;
       const unassigned = countUnassignedAssets(payload.portfolio, holdings);
-      if (unassigned > 0 && screen !== "allocation")
-        onNoticeAction(`${summary} · 미분류 자산 ${unassigned}개가 있습니다.`, { label: "자산 배정하기", view: "allocation" });
+      const notice = unassigned > 0 ? `${summary} · 미분류 자산 ${unassigned}개가 있습니다.` : summary;
+      const target = savedNoticeTarget({ firstSave: !saved, holdingCount: holdings.length, unassigned, screen });
+      if (target === "import") onNoticeAction(notice, { label: "캡처 가져오기", view: "import" });
+      else if (target === "allocation") onNoticeAction(notice, { label: "자산 배정하기", view: "allocation" });
       else onNotice(summary);
       if (!assetsOnly)
         void fetch("/api/holdings", { cache: "no-store" })
@@ -1738,7 +1764,7 @@ export default function PortfolioBuilder({
   );
   const titles = {
     dashboard: [
-      "내 포트폴리오",
+      "대시보드",
       "전체 비중과 핵심 지표를 확인하세요.",
     ],
     strategy: [
@@ -1747,7 +1773,7 @@ export default function PortfolioBuilder({
     ],
     preferences: ["설정", "필요한 설정을 골라 변경하세요."],
     composition: [
-      "포트별 자산 비중",
+      "포트 비중",
       "현재 보유 비중과 목표의 차이를 살펴보세요.",
     ],
     allocation: [
@@ -1773,13 +1799,48 @@ export default function PortfolioBuilder({
     return (
       <div className={styles.loading}>포트폴리오를 불러오는 중입니다…</div>
     );
+  const rebalanceEmpty = (
+    <section className={styles.emptyState}>
+      {assetCount === 0 ? (
+        <>
+          <h2>리밸런싱할 자산이 없습니다</h2>
+          <p>목표 비중과 보유 자산이 있어야 조정 수량을 계산할 수 있습니다.</p>
+        </>
+      ) : (
+        <>
+          <h2>먼저 목표 비중을 정해 주세요</h2>
+          <p>목표 비중을 정하면 보유 자산과 비교해 조정 수량을 계산합니다.</p>
+        </>
+      )}
+      <div>
+        <button type="button" onClick={assetCount === 0 ? onImport : () => onNavigate("strategy")}>
+          {assetCount === 0 ? "캡처 가져오기" : "목표 정하기"}
+        </button>
+        {assetCount === 0 && !draft && (
+          <button type="button" className={styles.emptyLink} onClick={() => onNavigate("strategy")}>
+            목표 정하기
+          </button>
+        )}
+      </div>
+    </section>
+  );
+  if (!draft && screen === "rebalance")
+    return (
+      <div className={styles.builder}>
+        <div className={styles.heading}>
+          <div>
+            <h1>{titles[0]}</h1>
+            <p>{titles[1]}</p>
+          </div>
+        </div>
+        {rebalanceEmpty}
+      </div>
+    );
   if (!draft)
     return (
       <div className={styles.start}>
-        {holdings.length > 0 ? (
+        {holdings.length > 0 && (
           <p>등록한 종목 {holdings.length}개가 있습니다. 목표 비중을 정하면 현재 비중과 비교할 수 있습니다.</p>
-        ) : (
-          <p>이전에 등록한 자산이 보이지 않나요? <button type="button" onClick={() => onNavigate("settings")}>로그인 계정 확인</button></p>
         )}
         <h1>내 투자 원칙부터 정해보세요.</h1>
         <p>
@@ -1787,6 +1848,11 @@ export default function PortfolioBuilder({
           연결할 수 있습니다.
         </p>
         <div>
+          {holdings.length > 0 && (
+            <button type="button" onClick={beginFromHoldings}>
+              보유 기준으로 시작
+            </button>
+          )}
           <button onClick={() => begin(true)}>
             예시 구성으로 시작
           </button>
@@ -1796,14 +1862,14 @@ export default function PortfolioBuilder({
           예시 비중은 자유롭게 수정할 수 있습니다. 저장하기 전까지 계정에
           반영되지 않습니다.
         </small>
-        <a
-          className={styles.startQuote}
-          href="https://www.berkshirehathaway.com/letters/2013ltr.pdf"
-          target="_blank"
-          rel="noreferrer"
-        >
-          “가격은 지불하는 것, 가치는 얻는 것.” <span>— 벤저민 그레이엄</span>
-        </a>
+        {holdings.length === 0 && (
+          <p>
+            이전에 등록한 자산이 보이지 않나요?{" "}
+            <button type="button" className={styles.startHelp} onClick={() => onNavigate("settings")}>
+              로그인 계정 확인
+            </button>
+          </p>
+        )}
       </div>
     );
 
@@ -1830,7 +1896,7 @@ export default function PortfolioBuilder({
             <p>{titles[1]}</p>
           </div>
           <div>
-            {screen !== "preferences" && <button
+            {screen !== "preferences" && holdings.length + draft.cryptoAssets.length > 0 && <button
               className={styles.ghost}
               onClick={refresh}
               disabled={refreshing || quotesRefreshing}
@@ -1911,14 +1977,21 @@ export default function PortfolioBuilder({
         />
       )}
 
+      {previewing && (
+        <div className={styles.targetBand}>
+          <p>목표 비중을 정하면 현재 비중과 비교할 수 있습니다.</p>
+          <button type="button" onClick={() => onNavigate("strategy")}>목표 정하기</button>
+        </div>
+      )}
       {screen === "dashboard" && <PortfolioDashboard
         total={values?.total ?? 0} gain={displayedGain} percent={displayedGainPercent} gainView={gainView} gainNote={displayedGainNote}
-        refreshing={refreshing || quotesRefreshing} onRefresh={refresh} controls={dashboardControls}
-        onEdit={onEditHoldings} onHistory={()=>onNavigate("history")} onComposition={()=>onNavigate("composition")} onRebalance={()=>onNavigate("rebalance")}
+        refreshing={refreshing || quotesRefreshing} onRefresh={(values?.total ?? 0) > 0 ? refresh : undefined} controls={dashboardControls}
+        onEdit={onEditHoldings} onHistory={()=>onNavigate("history")} onComposition={()=>onNavigate("composition")} onRebalance={()=>onNavigate(previewing ? "strategy" : "rebalance")}
+        targetAction={previewing ? "목표 정하기" : undefined}
         composition={<PortfolioVisuals portfolio={draft} holdings={holdings}/>}
         market={<IndexOverview overview={indexOverview} plan={draft.drawdownPlan ?? null} />}
-        targetTitle={rebalanceReady ? driftItems.length ? `${driftItems.length}개 포트 조정 필요` : "목표 범위 안에 있어요" : "배정·가격 확인 필요"}
-        targetDetail={!rebalanceReady ? "미분류 자산과 시세를 확인하세요." : driftItems.length ? "정해둔 목표와 현재 비중의 차이를 확인하세요." : "다음 점검 때도 나의 투자 원칙을 이어가세요."}
+        targetTitle={previewing ? "목표 비중이 아직 없어요" : rebalanceReady ? driftItems.length ? `${driftItems.length}개 포트 조정 필요` : "목표 범위 안에 있어요" : "배정·가격 확인 필요"}
+        targetDetail={previewing ? "목표를 정하면 지금 비중과 비교해 사고팔 금액을 계산합니다." : !rebalanceReady ? "미분류 자산과 시세를 확인하세요." : driftItems.length ? "정해둔 목표와 현재 비중의 차이를 확인하세요." : "다음 점검 때도 나의 투자 원칙을 이어가세요."}
         metadata={<>{quotesRefreshing && <span>시세 갱신 중</span>}{(quoteError || cryptoRefreshError || fxRefreshError) && <p role="status">{quoteError || cryptoRefreshError || fxRefreshError}</p>}{Boolean(values?.missingPrices) && <span>가격 미확인 자산 {values?.missingPrices}개</span>}</>}
       >
         <AssetList investments={mobileInvestments} manualAssets={draft.manualAssets} includeFx={Boolean(draft.includeFxGains)} previousFx={dailyFxRate} usdKrw={draft.usdKrw} gainView={gainView} dailyLoading={quotesRefreshing || cryptoRefreshing} onSelectAsset={onSelectAsset} assetSort={assetSort}/>
@@ -1928,9 +2001,9 @@ export default function PortfolioBuilder({
         <div className={styles.compositionView}>
           <PortfolioVisuals portfolio={draft} holdings={holdings} showHeading={false} />
           <div className={styles.screenLinks}>
-            <button type="button" onClick={() => onNavigate("strategy")}>목표 비중 수정 <ArrowRight size={16} /></button>
+            <button type="button" onClick={() => onNavigate("strategy")}>목표 비중 수정</button>
             <button type="button" onClick={() => onNavigate("rebalance")}>
-              리밸런싱 보기 <ArrowRight size={16} />
+              리밸런싱 보기
             </button>
           </div>
         </div>
@@ -1982,7 +2055,7 @@ export default function PortfolioBuilder({
                 <input value={draft.title} onChange={(event) => change({ ...draft, title: event.target.value })} />
               </label>
             </div>
-            <button type="button" className={styles.ghost} onClick={() => onNavigate("strategy")}>목표 비중·허용 오차 변경 <ArrowRight size={15} /></button>
+            <button type="button" className={styles.ghost} onClick={() => onNavigate("strategy")}>목표 비중·허용 오차 변경</button>
           </section>
           <MarketDataStatus />
           </>,
@@ -2000,45 +2073,11 @@ export default function PortfolioBuilder({
           panels={{
             targets: (
           <section className={styles.panel}>
-            <div className={styles.panelHead}>
-              <div>
-                <h2>목표 비중 편집</h2>
-              </div>
+            <div className={styles.targetHead}>
               <button className={styles.ghost} onClick={addBucket}>
                 <Plus size={16} /> 포트 추가
               </button>
             </div>
-            <div className={styles.toleranceControl}>
-              <div className={styles.toleranceDescription}>
-                <strong>리밸런싱 허용 오차</strong>
-                <label>
-                  <span>계산 기준</span>
-                  <select aria-label="리밸런싱 허용 오차 기준" value={draft.toleranceMode ?? "percentage-points"} onChange={event => change({...draft, toleranceMode: event.target.value as "percentage-points" | "relative"})}>
-                    <option value="percentage-points">전체 자산 비중 기준 (%p)</option>
-                    <option value="relative">각 포트 목표 금액 기준 (%)</option>
-                  </select>
-                </label>
-                <small>{draft.toleranceMode === "relative"
-                  ? "각 포트의 목표 금액 대비 오차입니다. 목표 1,000만 원에 ±10%라면 900만~1,100만 원을 허용합니다."
-                  : "전체 자산에서 차지하는 비중의 차이입니다. 목표 20%에 ±2%p라면 18~22%를 허용합니다."}</small>
-                <small>추가 투입금이 있으면 이를 포함한 총자산으로 목표 금액을 계산합니다.</small>
-              </div>
-              <label className={styles.toleranceInput}>
-                ±
-                <NumberInput
-                  min="0" max={draft.toleranceMode === "relative" ? "100" : "30"} step="0.1"
-                  value={draft.toleranceMode === "relative" ? draft.relativeTolerancePercent ?? 10 : draft.tolerancePercent}
-                  aria-label={draft.toleranceMode === "relative" ? "목표 금액 대비 허용 오차 퍼센트" : "리밸런싱 허용 오차 퍼센트포인트"}
-                  onValueChange={value => change(draft.toleranceMode === "relative"
-                    ? {...draft, relativeTolerancePercent: Number(value)}
-                    : {...draft, tolerancePercent: Number(value)})}
-                />
-                {draft.toleranceMode === "relative" ? "%" : "%p"}
-              </label>
-            </div>
-            <button type="button" className={styles.ghost} onClick={() => { setRequestedPreferenceTab("valuation"); onNavigate("preferences"); }}>
-              환율·손익 설정 <ArrowRight size={15} />
-            </button>
             <div className={styles.bucketList}>
               {draft.buckets.map((bucket) => {
                 const current = values?.values.get(bucket.id) ?? 0;
@@ -2073,12 +2112,14 @@ export default function PortfolioBuilder({
                           }}
                         />
                       </div>
-                      <small>
-                        현재 {pct(currentPercent)} · 목표 차이{" "}
-                        {currentPercent - bucket.targetPercent > 0 ? "+" : ""}
-                        {(currentPercent - bucket.targetPercent).toFixed(1)}%p ·{" "}
-                        {fmt(current)}
-                      </small>
+                      {values && values.total > 0 && (
+                        <small>
+                          현재 {pct(currentPercent)} · 목표 차이{" "}
+                          {currentPercent - bucket.targetPercent > 0 ? "+" : ""}
+                          {(currentPercent - bucket.targetPercent).toFixed(1)}%p ·{" "}
+                          {fmt(current)}
+                        </small>
+                      )}
                     </div>
                     <label>
                       목표{" "}
@@ -2120,6 +2161,37 @@ export default function PortfolioBuilder({
             drawdown: <DrawdownStages portfolio={draft} drawdown={indexDrawdown} onChange={change} onNotice={onNotice} />,
             calculation: (
           <section className={styles.panel}>
+            <div className={styles.toleranceControl}>
+              <div className={styles.toleranceDescription}>
+                <strong>리밸런싱 허용 오차</strong>
+                <label>
+                  <span>계산 기준</span>
+                  <select aria-label="리밸런싱 허용 오차 기준" value={draft.toleranceMode ?? "percentage-points"} onChange={event => change({...draft, toleranceMode: event.target.value as "percentage-points" | "relative"})}>
+                    <option value="percentage-points">전체 자산 비중 기준 (%p)</option>
+                    <option value="relative">각 포트 목표 금액 기준 (%)</option>
+                  </select>
+                </label>
+                <small>{draft.toleranceMode === "relative"
+                  ? "각 포트의 목표 금액 대비 오차입니다. 목표 1,000만 원에 ±10%라면 900만~1,100만 원을 허용합니다."
+                  : "전체 자산에서 차지하는 비중의 차이입니다. 목표 20%에 ±2%p라면 18~22%를 허용합니다."}</small>
+                <small>추가 투입금이 있으면 이를 포함한 총자산으로 목표 금액을 계산합니다.</small>
+              </div>
+              <label className={styles.toleranceInput}>
+                ±
+                <NumberInput
+                  min="0" max={draft.toleranceMode === "relative" ? "100" : "30"} step="0.1"
+                  value={draft.toleranceMode === "relative" ? draft.relativeTolerancePercent ?? 10 : draft.tolerancePercent}
+                  aria-label={draft.toleranceMode === "relative" ? "목표 금액 대비 허용 오차 퍼센트" : "리밸런싱 허용 오차 퍼센트포인트"}
+                  onValueChange={value => change(draft.toleranceMode === "relative"
+                    ? {...draft, relativeTolerancePercent: Number(value)}
+                    : {...draft, tolerancePercent: Number(value)})}
+                />
+                {draft.toleranceMode === "relative" ? "%" : "%p"}
+              </label>
+            </div>
+            <button type="button" className={styles.ghost} onClick={() => { setRequestedPreferenceTab("valuation"); onNavigate("preferences"); }}>
+              환율·손익 설정
+            </button>
             <div className={styles.panelHead}><h2>리밸런싱 계산 설정</h2></div>
             <p className={styles.help}>이번 계산에 적용됩니다. 추가 투입금과 조정할 종목은 리밸런싱에서 선택하세요.</p>
             <label className={styles.cashBudget}>리밸런싱 방법
@@ -2224,7 +2296,7 @@ export default function PortfolioBuilder({
             </details>
             </div>
 
-            <button type="button" className={styles.ghost} onClick={() => onNavigate("rebalance")}>리밸런싱 제안 보기 <ArrowRight size={15} /></button>
+            <button type="button" className={styles.ghost} onClick={() => onNavigate("rebalance")}>리밸런싱 제안 보기</button>
           </section>
             ),
           }}
@@ -2232,26 +2304,6 @@ export default function PortfolioBuilder({
       )}
       {(screen === "allocation" || screen === "edit") && (
         <>
-          {screen === "allocation" && (
-            <div className={styles.vizDisclosure}>
-              <div>
-                <strong>자산 지도를 더 자세히 보고 싶나요?</strong>
-                <span>종목·포트·증권사별 비중을 3D로 탐색할 수 있습니다.</span>
-              </div>
-              <button
-                type="button"
-                aria-expanded={show3d}
-                onClick={() => setShow3d((value) => !value)}
-              >
-                {show3d ? "3D 분석 접기" : "3D 분석 열기"}{" "}
-                <ChevronDown size={16} />
-              </button>
-            </div>
-          )}
-          {screen === "allocation" && show3d && (
-            <Portfolio3D portfolio={draft} holdings={holdings} />
-          )}
-
 
           <AssetSections className={screen === "edit" ? styles.editorGroups : `${styles.panel} ${styles.collapsible}`} {...(screen === "allocation" ? {open:true} : {})}>
             {screen === "allocation" && (
@@ -2324,18 +2376,19 @@ export default function PortfolioBuilder({
                             }
                           >
                             <option value="auto">
-                              자동{" "}
-                              {autoBucket
-                                ? `· ${draft.buckets.find((bucket) => bucket.id === autoBucket)?.name}`
-                                : "· 미분류"}
+                              {allocationOptionLabel(
+                                "auto",
+                                draft.buckets.find((bucket) => bucket.id === autoBucket)?.name,
+                              )}
                             </option>
-                            <option value="unassigned">직접 · 미분류</option>
+                            <option value="unassigned">{allocationOptionLabel("unassigned")}</option>
                             {draft.buckets.map((bucket) => (
                               <option key={bucket.id} value={bucket.id}>
-                                직접 · {bucket.name}
+                                {allocationOptionLabel("bucket", bucket.name)}
                               </option>
                             ))}
                           </select>
+                          {selection === "auto" && <small>자동 배정됨</small>}
                         </div>
                       );
                     })}
@@ -2594,6 +2647,25 @@ export default function PortfolioBuilder({
               </>
             )}
           </AssetSections>
+          {screen === "allocation" && (
+            <div className={styles.vizDisclosure}>
+              <div>
+                <strong>자산 지도를 더 자세히 보고 싶나요?</strong>
+                <span>종목·포트·증권사별 비중을 3D로 탐색할 수 있습니다.</span>
+              </div>
+              <button
+                type="button"
+                aria-expanded={show3d}
+                onClick={() => setShow3d((value) => !value)}
+              >
+                {show3d ? "3D 분석 접기" : "3D 분석 열기"}{" "}
+                <ChevronDown size={16} />
+              </button>
+            </div>
+          )}
+          {screen === "allocation" && show3d && (
+            <Portfolio3D portfolio={draft} holdings={holdings} />
+          )}
           {screen === "edit" && dirty && (
             <div className={styles.assetEditorSave}>
               <SaveStatus dirty={dirty} saving={saving} onSave={save} saveLabel="자산 변경 저장" />
@@ -2609,8 +2681,9 @@ export default function PortfolioBuilder({
           </div>
         </div>
       )}
-      {screen === "rebalance" && <DrawdownNotice portfolio={draft} drawdown={indexDrawdown} onReview={() => { setStrategyTab("drawdown"); onNavigate("strategy"); }} />}
-      {screen === "rebalance" && <RebalancePlans
+      {screen === "rebalance" && assetCount === 0 && rebalanceEmpty}
+      {screen === "rebalance" && assetCount > 0 && <DrawdownNotice portfolio={draft} drawdown={indexDrawdown} onReview={() => { setStrategyTab("drawdown"); onNavigate("strategy"); }} />}
+      {screen === "rebalance" && assetCount > 0 && <RebalancePlans
         userId={userId} portfolio={draft} holdings={holdings} disabled={dirty||saving}
         canStart={rebalanceReady&&(advice.trades.length+advice.cryptoTrades.length)>0}
         config={{mode:rebalanceMode,newCash:rebalanceMode === "add-only"&&budgetMode === "theoretical"?null:cashInput.trim()&&Number.isFinite(Number(cashInput))?Math.min(1e15,Math.max(0,Number(cashInput))):0,
@@ -2625,7 +2698,7 @@ export default function PortfolioBuilder({
               <div>
                 <h2>조정 제안</h2>
               </div>
-              <button type="button" className={styles.ghost} onClick={() => onNavigate("strategy")}>계산 설정 <ArrowRight size={15} /></button>
+              <button type="button" className={styles.ghost} onClick={() => onNavigate("strategy")}>계산 설정</button>
             </div>
             {(rebalanceMode === "trade" || budgetMode === "input") && (
               <label className={styles.cashBudget}>
@@ -2658,7 +2731,7 @@ export default function PortfolioBuilder({
                     type="button"
                     onClick={() => onNavigate("allocation")}
                   >
-                    자산 배정으로 이동 <ArrowRight size={14} />
+                    자산 배정으로 이동
                   </button>
                 )}
               </div>
@@ -2762,11 +2835,8 @@ export default function PortfolioBuilder({
                       <div
                         key={item.bucket.id}
                         className={`${styles.advice} ${action === "add" ? styles.adviceAdd : action === "sell" ? styles.adviceSell : styles.adviceHold}`}
+                        style={{ "--bucket": item.bucket.color } as React.CSSProperties}
                       >
-                        <span
-                          className={styles.dot}
-                          style={{ background: item.bucket.color }}
-                        />
                         <div>
                           <strong>
                             <span className={styles.actionTag}>
@@ -2778,17 +2848,15 @@ export default function PortfolioBuilder({
                             </span>
                             {item.bucket.name}
                           </strong>
-                          <small className={styles.proposalBasis}><span className={presentation.currentOutside ? styles.outsideNow : undefined}>{presentation.currentLabel}</span>{(hasBucketTrades || settlement) && ` · ${presentation.reason}`}</small>
-                          <small className={styles.fundedWeight}>
-                            현재 {weightPct(item.currentPercent)} → 제안 후 {weightPct(item.projectedPercent)}
-                          </small>
-                          {!amount && <small className={styles.targetWeight}>
-                            목표 {pct(item.bucket.targetPercent)} · {withinPortfolioTolerance(draft, item.bucket.targetPercent, item.projectedPercent)
+                          <small className={styles.proposalLine}>
+                            <span className={presentation.currentOutside ? styles.outsideNow : undefined}>{presentation.currentOutside ? "" : `${presentation.currentLabel} · `}현재 {weightPct(item.currentPercent)} → 제안 후 {weightPct(item.projectedPercent)}</span>
+                            {!amount && <> · 목표 {pct(item.bucket.targetPercent)}({withinPortfolioTolerance(draft, item.bucket.targetPercent, item.projectedPercent)
                               ? `${resultLabel} 허용 범위 이내`
                               : draft.toleranceMode === "relative"
                                 ? `${resultLabel} ${item.remainingGapKrw > 0 ? "부족" : "초과"} ${fmt(Math.abs(item.remainingGapKrw))}`
-                                : `${resultLabel} ${item.projectedPercent < item.bucket.targetPercent ? "부족" : "초과"} ${Math.abs(item.projectedPercent - item.bucket.targetPercent).toFixed(1)}%p`}
-                          </small>}
+                                : `${resultLabel} ${item.projectedPercent < item.bucket.targetPercent ? "부족" : "초과"} ${Math.abs(item.projectedPercent - item.bucket.targetPercent).toFixed(1)}%p`})</>}
+                            {(hasBucketTrades || settlement) && ` · ${presentation.reason}`}
+                          </small>
                           {(bucketRules.length > 0 || bucketCrypto.length > 0) && item.fundedGapPercent > 1e-9 && (
                             <label className={styles.proposalChoice}>
                               매수 종목
@@ -2829,7 +2897,7 @@ export default function PortfolioBuilder({
                               const assets = draft.manualAssets.filter(asset => asset.bucketId === item.bucket.id);
                               if (assets.length === 1 && onSelectAsset) onSelectAsset({kind: "manual", id: assets[0].id});
                               else onEditHoldings();
-                            }}>금액 수정 <ArrowRight size={14} /></button>
+                            }}>금액 수정</button>
                           </div>
                         ) : !itemTrades.length && item.unaffordableBuys.length > 0 ? (
                           <div className={styles.buyHoldReason}>
@@ -2947,13 +3015,13 @@ export default function PortfolioBuilder({
 
                 <div className={styles.rebalanceLinks}>
                   <button type="button" onClick={onEditHoldings}>
-                    거래 후 자산 수정 <ArrowRight size={14} />
+                    거래 후 자산 수정
                   </button>
                   <button
                     type="button"
                     onClick={() => onNavigate("allocation")}
                   >
-                    자산 배정 확인 <ArrowRight size={14} />
+                    자산 배정 확인
                   </button>
                 </div>
               </>
@@ -3230,7 +3298,7 @@ export default function PortfolioBuilder({
           </details>
         </>}
       />}
-      {screen === "rebalance" && <ReviewSettings userId={userId} compact onSettings={()=>{setRequestedPreferenceTab("review");onNavigate("preferences");}} onDirty={setReviewDirty}/>}
+      {screen === "rebalance" && assetCount > 0 && <ReviewSettings userId={userId} compact onSettings={()=>{setRequestedPreferenceTab("review");onNavigate("preferences");}} onDirty={setReviewDirty}/>}
       {screen === "history" && (
         <>
           <section className={styles.panel}>
@@ -3269,7 +3337,10 @@ export default function PortfolioBuilder({
               <p className={styles.help}>선택한 포트·기간의 마지막 관측값입니다. 보유 정보 변경 표지는 전체 자산의 수량·단가·입력 금액 등 저장 정보가 이전 관측과 달라졌다는 의미이며 거래 내역이 아닙니다.</p>
               <table><thead><tr><th scope="col">날짜</th><th scope="col">평가액</th><th scope="col">보유 정보</th></tr></thead><tbody>{historyRows.map(point => <tr key={point.date}><td>{point.date}</td><td>{fmt(point.valueKrw)}</td><td>{changedDays.has(point.date) ? "변경 기록" : point.positionSignature ? "—" : "비교 정보 없음"}</td></tr>)}</tbody></table>
             </details>
-            {trendKey === "__TOTAL__" && (
+            {trendKey === "__TOTAL__" && totalHistory.length < 2 && (
+              <p className={styles.help}>기록이 2건 이상 쌓이면 기간 변화가 표시됩니다. 지금 기록으로 오늘 평가액을 남겨 보세요.</p>
+            )}
+            {trendKey === "__TOTAL__" && totalHistory.length >= 2 && (
               <div className={styles.performanceSummary}>
                 <div>
                   <small>기록 기간의 평가액 변화</small>
@@ -3298,9 +3369,7 @@ export default function PortfolioBuilder({
                   {firstPoint?.date ?? "—"} {firstPoint?.recordedAt ? kstTime(firstPoint.recordedAt, true) : "시각 미기록"} 이후 ~ {lastPoint?.date ?? "—"} {lastPoint?.recordedAt ? kstTime(lastPoint.recordedAt, true) : "시각 미기록"}까지 · 시작 시각 제외 / 종료 시각 포함. 순입금 제외 증감은 투자 수익률이 아닙니다.
                 </p>
                 {performance.ambiguous.length > 0 && <p className={styles.help} role="status">시각 확인이 필요한 경계일 입출금 {performance.ambiguous.length}건: {performance.ambiguous.map((flow) => `${flow.date} ${flow.note || (flow.amountKrw > 0 ? "입금" : "출금")}`).join(", ")}. 아래 입출금 내역의 연필 버튼에서 실제 발생 시각을 입력하세요.</p>}
-                <details className={styles.metricBasis}><summary>기록 시각과 입출금 집계 기준</summary><p>입출금 발생 시각이 시작 평가액 이후이면서 종료 평가액 시각 이하인 내역을 집계합니다. 과거 입출금에 시각이 없고 기간 경계일에 해당하면 증감 계산을 보류합니다. 아래 내역에서 실제 시각을 확인해 수정해 주세요. 순입금 제외 증감은 평가액 변화에서 입출금을 뺀 참고값으로 신규 자산 등록·수량 수정, 배당·수수료·환율 변동도 포함합니다.</p></details>
-                <p className={styles.help}>
-                </p>
+                <details className={styles.metricBasis}><summary>기록 시각과 입출금 집계 기준 <ChevronDown size={14} /></summary><p>입출금 발생 시각이 시작 평가액 이후이면서 종료 평가액 시각 이하인 내역을 집계합니다. 과거 입출금에 시각이 없고 기간 경계일에 해당하면 증감 계산을 보류합니다. 아래 내역에서 실제 시각을 확인해 수정해 주세요. 순입금 제외 증감은 평가액 변화에서 입출금을 뺀 참고값으로 신규 자산 등록·수량 수정, 배당·수수료·환율 변동도 포함합니다.</p></details>
               </div>
             )}
             <details className={styles.flowDetails}>
@@ -3310,7 +3379,7 @@ export default function PortfolioBuilder({
               <p className={styles.help}>
                 여기서 직접 등록한 입출금은 분석용이며 잔고를 바꾸지 않습니다. 자산 수정의 외부 입출금으로 등록하면 잔고와 기록에 함께 반영되므로, 같은 내역을 다시 등록하지 마세요. 계좌 간 이동은 외부 입출금으로 등록하지 않습니다.
               </p>
-              <button type="button" className={styles.ghost} onClick={onEditHoldings}>현금 잔고 수정 →</button>
+              <button type="button" className={styles.ghost} onClick={onEditHoldings}>현금 잔고 수정</button>
 
               {flowDirty && <p className={styles.help} role="status">저장하지 않은 변경이 있습니다. {editingFlowId ? "선택한 입출금 내역을 수정 중입니다." : "입력한 입출금은 기록 버튼을 눌러 저장하세요."} <button type="button" className={styles.ghost} disabled={flowSaving} onClick={() => { setEditingFlowId(null); setFlowAmount(""); setFlowNote(""); setFlowTime(""); }}>{editingFlowId ? "수정 취소" : "입력 취소"}</button></p>}
               <fieldset className={styles.flowForm} disabled={flowSaving}>

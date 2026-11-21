@@ -20,7 +20,6 @@ import {
 import { signIn, signOut, useSession } from "next-auth/react";
 import Link from "next/link";
 import {
-  ArrowRight,
   Camera,
   Check,
   ChevronRight,
@@ -435,6 +434,7 @@ export default function PortfolioPage() {
     [holdings,fxEnabled,fxSettings],
   );
 
+  const holdingsEmpty = view === "holdings" && !loading && holdings.length === 0;
   const shown = useMemo(
     () =>
       holdings
@@ -891,10 +891,9 @@ export default function PortfolioPage() {
           <div className={styles.authPitch}>
             <h1>
               투자는
-              <br />나만의 리듬으로.
+              <br />나만의 리듬으로
             </h1>
             <p>
-              <strong>내 기준을 지키며, 꾸준히.</strong>
               목표 비중을 직접 설계하고 국내·미국 종목을 연결하세요. 현재 비중과
               목표의 차이, 다음 조정이 필요한 자산까지 한눈에 볼 수 있습니다.
             </p>
@@ -918,15 +917,6 @@ export default function PortfolioPage() {
                 <li><span>금·비트코인</span><span>목표 20%</span><span>현재 15%</span><span>−5%p</span></li>
               </ul>
             </figure>
-            <a
-              className={styles.authQuote}
-              href="https://www.berkshirehathaway.com/letters/1988.html"
-              target="_blank"
-              rel="noreferrer"
-            >
-              <span>“우리가 선호하는 보유 기간은 영원입니다.”</span>
-              <small>워런 버핏 · 버크셔 해서웨이 1988 주주서한</small>
-            </a>
           </div>
         </section>
         <section className={styles.authForm}>
@@ -935,17 +925,6 @@ export default function PortfolioPage() {
             <p>
               보유 자산을 정리하고, 목표 비중에 맞는 투자 결정을 준비하세요.
             </p>
-            <div className={styles.authSteps} aria-label="서비스 이용 순서">
-              <span>
-                <b>01</b>목표 설계
-              </span>
-              <span>
-                <b>02</b>종목 연결
-              </span>
-              <span>
-                <b>03</b>비중 점검
-              </span>
-            </div>
             <small className={styles.authSignInLabel}>
               카카오 또는 네이버 계정으로 시작
             </small>
@@ -1007,8 +986,8 @@ export default function PortfolioPage() {
               </div>
             )}
             <nav className={styles.authInfoLinks} aria-label="서비스 안내">
-              <Link className={styles.authGuideLink} href="/about">PortRhythm은 어떤 서비스인가요? <ArrowRight size={16} /></Link>
-              <Link className={styles.authGuideLink} href="/guide">처음이신가요? 사용 가이드 보기 <ArrowRight size={16} /></Link>
+              <Link className={styles.authGuideLink} href="/about">PortRhythm은 어떤 서비스인가요?</Link>
+              <Link className={styles.authGuideLink} href="/guide">처음이신가요? 사용 가이드 보기</Link>
             </nav>
             <div className={styles.authPrivacy}>
               <ShieldCheck size={18} /> 캡처 이미지는 브라우저에서 분석하고
@@ -1097,21 +1076,6 @@ export default function PortfolioPage() {
         </nav>
         {operator && <Link href="/admin" style={{ padding: "12px 24px", color: "var(--blue)", fontSize: 14 }}>운영 관리 ↗</Link>}
         <div className={styles.sideFoot}>
-          <div className={styles.sideNote}>
-            <ShieldCheck size={18} />
-            <span>
-              개인 자산 공간<small>계정별로 분리해 보관 중</small>
-            </span>
-          </div>
-          <a
-            className={styles.sideQuote}
-            href="https://www.berkshirehathaway.com/letters/2013ltr.pdf"
-            target="_blank"
-            rel="noreferrer"
-          >
-            <span>“가격은 지불하는 것, 가치는 얻는 것.”</span>
-            <small>벤저민 그레이엄</small>
-          </a>
           <button className={styles.sideUser} onClick={() => go("settings")}>
             <span className={styles.avatar}>
               <ProfileAvatar image={session.user?.image} name={session.user?.name} />
@@ -1186,7 +1150,7 @@ export default function PortfolioPage() {
             <section className={styles.startGuide} aria-label="처음 시작 안내">
               <CircleHelp size={21} />
               <div><strong>목표 비중을 정하고 자산을 연결해 보세요.</strong><p>목표 설계 → 자산 등록 → 배정 → 비중 점검</p></div>
-              <button type="button" onClick={() => go("guide")}>시작 안내 <ArrowRight size={16} /></button>
+              <button type="button" onClick={() => go("guide")}>시작 안내</button>
               <button type="button" className={styles.startGuideDismiss} aria-label="시작 안내 닫기" onClick={dismissStartGuide}><X size={17} /></button>
             </section>
           )}
@@ -1195,7 +1159,6 @@ export default function PortfolioPage() {
               <div className={styles.pageHead}>
                 <div>
                   <h1>전체 메뉴</h1>
-                  <p>내 투자 기준부터 자산 관리까지</p>
                 </div>
               </div>
               {menuSections.map((section) => (
@@ -1221,7 +1184,7 @@ export default function PortfolioPage() {
               <span>{notice}</span>
               {noticeAction && (
                 <button type="button" className={styles.noticeAction} onClick={() => go(noticeAction.view)}>
-                  {noticeAction.label} <ArrowRight size={15} />
+                  {noticeAction.label}
                 </button>
               )}
               <button aria-label="알림 닫기" onClick={() => { setNotice(""); setNoticeAction(null); }}>
@@ -1303,7 +1266,7 @@ export default function PortfolioPage() {
                   </p>
                 </div>
               </div>
-              {view === "holdings" && (
+              {view === "holdings" && !holdingsEmpty && (
                 <div className={styles.holdingStats}>
                   <div>
                     <span>국내 평가금액</span>
@@ -1313,7 +1276,7 @@ export default function PortfolioPage() {
                     <span>국내 평가손익</span>
                     <strong
                       className={
-                        totals.gain.KR >= 0
+                        !totals.costKnown.KR ? undefined : totals.gain.KR >= 0
                           ? styles.gainPositive
                           : styles.gainNegative
                       }
@@ -1342,7 +1305,7 @@ export default function PortfolioPage() {
                     <span>미국 평가손익{fxEnabled?" · 환율 포함":" · USD"}</span>
                     <strong
                       className={
-                        totals.gain.US >= 0
+                        !totals.costKnown.US ? undefined : totals.gain.US >= 0
                           ? styles.gainPositive
                           : styles.gainNegative
                       }
@@ -1395,7 +1358,7 @@ export default function PortfolioPage() {
                 </div>
               )}
               <section className={`${styles.panel} ${view === "holdings" ? styles.positionsPanel : ""}`}>
-                <div className={styles.toolbar}>
+                {!holdingsEmpty && <div className={styles.toolbar}>
                   <div className={styles.tabs}>
                     {(["ALL", "KR", "US"] as const).map((item) => (
                       <button
@@ -1421,15 +1384,15 @@ export default function PortfolioPage() {
                     />
                   </label>
                   <AssetSortSelect value={assetSort} onChange={chooseAssetSort} className={styles.assetSort} marketGrouped={filter === "ALL"} />
-                </div>
-                <div className={`${styles.tableHead} ${styles.editTableHead}`}>
+                </div>}
+                {!holdingsEmpty && <div className={`${styles.tableHead} ${styles.editTableHead}`}>
                   <span>종목</span>
                   <span>보유 수량</span>
                   <span>{view === "edit" ? "현재가" : "현재가 / 평균 매입가"}</span>
                   <span>평가액</span>
                   <span>평가손익</span>
                   <span />
-                </div>
+                </div>}
                 {shown.length ? (
                   shown.map((row) => {
                     const price = row.currentPrice ?? row.capturedPrice;
@@ -1581,6 +1544,14 @@ export default function PortfolioPage() {
                       </Fragment>
                     );
                   })
+                ) : holdingsEmpty ? (
+                  <div className={styles.holdingsEmpty}>
+                    <strong>아직 등록한 종목이 없습니다.</strong>
+                    <div>
+                      <button type="button" onClick={() => go("import")}>캡처 가져오기</button>
+                      <button type="button" className={styles.emptyLink} onClick={() => go("accounts")}>직접 추가</button>
+                    </div>
+                  </div>
                 ) : (
                   <Empty onImport={() => go("import")} loading={loading} />
                 )}
@@ -1905,9 +1876,9 @@ export default function PortfolioPage() {
           const { Icon } = item;
           const label =
             id === "portfolio"
-              ? "자산"
+              ? "대시보드"
               : id === "composition"
-                ? "비중"
+                ? "포트 비중"
                 : "리밸런싱";
           return (
             <button
@@ -1947,7 +1918,7 @@ function Empty({
       <p>증권사 잔고 캡처에서 종목을 가져와 보세요.</p>
       {!loading && (
         <button onClick={onImport}>
-          캡처 가져오기 <ArrowRight size={16} />
+          캡처 가져오기
         </button>
       )}
     </div>

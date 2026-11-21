@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { ArrowRight, Check, ChevronDown, Plus, RefreshCw } from "lucide-react";
+import { Check, ChevronDown, Plus } from "lucide-react";
 import AssetIcon from "./AssetIcon";
 import RunReplacementForm from "./RunReplacementForm";
 import NumberInput from "./NumberInput";
@@ -895,16 +895,6 @@ export default function RebalancePlans({
           onClick={() => {
             setTab("history");
             setSelected(null);
-          }}
-        >
-          계획 이력
-        </button>
-        <button
-          type="button"
-          className={styles.refresh}
-          aria-label="계획 이력 새로고침"
-          disabled={busy || formDirty || loading}
-          onClick={() => {
             setLoading(true);
             void reload().catch((e) => {
               setError(e.message);
@@ -912,7 +902,7 @@ export default function RebalancePlans({
             });
           }}
         >
-          <RefreshCw size={15} />
+          계획 이력
         </button>
       </div>
       {loading && <p role="status">계획 불러오는 중…</p>}
@@ -1032,7 +1022,6 @@ export default function RebalancePlans({
                       /{run.snapshot.items.length} 완료
                     </small>
                   </span>
-                  <ArrowRight size={15} />
                 </button>
               ))}
               {listing.nextOffset !== null && (
