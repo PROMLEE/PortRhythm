@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 import type { Holding } from "./holdings";
-import { portfolioValues, type Portfolio } from "./portfolio-model";
+import { portfolioValues, targetTotalStatus, type Portfolio } from "./portfolio-model";
 import styles from "./portfolio.module.css";
 
 type Props = {
@@ -27,10 +27,8 @@ export default function PortfolioVisuals({
   const hasValues = total > 0;
   const hasTargets = portfolio.buckets.length > 0;
   const showTarget = mode === "target" || !hasValues;
-  const targetTotal = portfolio.buckets.reduce(
-    (sum, bucket) => sum + bucket.targetPercent,
-    0,
-  );
+  const targetStatus = targetTotalStatus(portfolio.buckets);
+  const targetTotal = targetStatus.total;
   const items = [
     ...portfolio.buckets.map((bucket) => ({
       id: bucket.id,
@@ -233,10 +231,8 @@ export default function PortfolioVisuals({
               목표 비중을 정하면 포트별 차이를 보여 줍니다.
             </p>
           )}
-          {hasTargets && showTarget && targetTotal !== 100 && (
-            <p className={styles.allocationHint}>
-              목표 합계 {percent(targetTotal)} · 저장하려면 100%로 맞춰 주세요.
-            </p>
+          {hasTargets && showTarget && !targetStatus.balanced && (
+            <p className={styles.allocationHint}>{targetStatus.message}</p>
           )}
         </div>
       </div>
