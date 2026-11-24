@@ -453,26 +453,6 @@
 .assignmentAssetRow select {
   min-width: 175px;
 }
-.assetEditorSave {
-  display: flex;
-}
-.unsavedBar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin: 0 0 12px;
-  padding: 12px 14px;
-  border-radius: var(--radius-md);
-  background: var(--soft);
-}
-.unsavedBar p {
-  margin: 0;
-  color: var(--ink);
-  font-size: 13px;
-  font-weight: 700;
-}
 .manualForm {
   display: grid;
   grid-template-columns: 1.2fr 1fr 80px 1fr 80px;
@@ -863,7 +843,6 @@
 }
 .gainToggle { align-items: center; width: max-content; }
 .gainToggle button { border: 0; background: transparent; font-weight: 700; cursor: pointer; }
-.mobileSaveBar { display: none; }
 @media (max-width: 760px) {
   .mobileAssetGroup { margin-top: 20px; }
   .mobileAssetGroup h2 { display: flex; align-items: baseline; gap: 7px; margin: 0 0 8px; color: #25434c; font-size: 17px; font-weight: 750; }
@@ -879,11 +858,6 @@
   .mobileAssetValue .mobileUp { color: #bd4e56; }
   .mobileAssetValue .mobileDown { color: #2a6dba; }
   .mobileAssetEmpty { padding: 16px 0; color: #83989f; font-size: 12px; }
-  .mobileSaveBar { position: fixed; z-index: 9; inset: auto 0 calc(61px + env(safe-area-inset-bottom)); display: block; padding: 9px 16px; border-top: 1px solid #d7e5e5; background: #ffffffed; backdrop-filter: blur(12px); }
-  .mobileSaveBar button { width: 100%; min-height: 42px; border: 0; border-radius: var(--radius-md); background: #087b83; color: #fff; font-size: 13px; font-weight: 750; }
-  .mobileSaveBar button:disabled { opacity: .6; }
-  .mobileSaveBar > div { display: flex; }
-  .mobileSaveBar > div > * { flex: 1; justify-content: space-between; }
 }
 
 :global(html[data-theme="dark"]) .builder { color: #e8f1f2; }
@@ -921,7 +895,6 @@
   :global(html[data-theme="dark"]) .mobileAssetValue small { color: #839395; }
   :global(html[data-theme="dark"]) .mobileAssetValue strong { color: #f5f7f7; }
   :global(html[data-theme="dark"]) .mobileAssetEmpty { color: #91a0a2; }
-  :global(html[data-theme="dark"]) .mobileSaveBar { background: #1d2b30ed; border-color: #34464b; }
 }
 
 /* Group information with spacing and restrained surfaces. */
@@ -1861,15 +1834,6 @@
 .editorAssetAmount {
   flex: none;
   font-size: 15px;
-}
-.assetEditorSave {
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px;
-  padding: 16px 0;
-  border-top: 1px solid var(--line);
-  background: transparent;
 }
 :global(html[data-theme="dark"]) .panel,
 :global(html[data-theme="dark"]) .allocationCard {

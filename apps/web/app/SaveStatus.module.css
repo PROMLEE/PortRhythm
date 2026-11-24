@@ -1,43 +1,97 @@
-.group {
+.bar {
+  position: sticky;
+  bottom: 16px;
+  z-index: 9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 20px 0 0;
+  padding: 10px 10px 10px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: 0 10px 28px rgb(16 42 52 / 14%);
+  animation: rise 160ms ease-out;
+}
+.bar p {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-}
-.group .badge {
-  display: inline-flex;
-  align-items: center;
-  min-height: 26px;
-  padding: 3px 9px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  color: var(--muted);
-  font-size: 12px;
+  min-width: 0;
+  margin: 0;
+  color: var(--ink);
+  font-size: 13px;
   font-weight: 700;
-  white-space: nowrap;
+}
+.dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-round);
+  background: var(--blue);
 }
 .save {
   display: inline-flex;
+  flex: none;
   align-items: center;
   justify-content: center;
-  min-height: 38px;
-  padding: 9px 13px;
+  min-width: 88px;
+  min-height: 40px;
+  padding: 9px 18px;
   border: 0;
   border-radius: var(--radius-md);
   background: var(--action-fill);
   color: var(--action-ink);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 800;
   white-space: nowrap;
+  cursor: pointer;
 }
 .save:disabled {
-  opacity: 0.55;
+  opacity: 0.6;
+  cursor: progress;
 }
-.group .saved {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
+.done {
+  min-height: 62px;
+}
+.done p {
   color: #2d9e7d;
-  font-size: 12px;
-  font-weight: 750;
-  white-space: nowrap;
+}
+.spacer {
+  display: none;
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bar {
+    animation: none;
+  }
+}
+@media (max-width: 760px) {
+  .spacer {
+    display: block;
+    height: 64px;
+  }
+  .bar {
+    position: fixed;
+    inset: auto 0 calc(61px + env(safe-area-inset-bottom));
+    margin: 0;
+    padding: 9px 16px;
+    border-width: 1px 0 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: color-mix(in srgb, var(--surface) 94%, transparent);
+    backdrop-filter: blur(12px);
+  }
+  .bar p {
+    font-size: 12px;
+  }
+  .done {
+    min-height: 59px;
+  }
 }
