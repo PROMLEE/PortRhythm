@@ -39,7 +39,7 @@ import AssetIcon from "./AssetIcon";
 import AssetSortSelect, { compareAssets, type AssetSort } from "./asset-sort";
 import Portfolio3D from "./Portfolio3D";
 import PortfolioVisuals from "./PortfolioVisuals";
-import SaveStatus from "./SaveStatus";
+import SaveBar from "./SaveStatus";
 import DrawdownStages, { DrawdownNotice } from "./DrawdownStages";
 import { useIndexDrawdown, useIndexOverview } from "./use-index-drawdown";
 import IndexOverview from "./IndexOverview";
@@ -1883,12 +1883,6 @@ export default function PortfolioBuilder({
           && holdings.every(row => row.currentPrice !== null && row.quoteCheckedAt && Date.now()-Date.parse(row.quoteCheckedAt)<86400000)
           && draft.cryptoAssets.every(asset => asset.quotedPriceKrw !== null && asset.quoteCheckedAt && Date.now()-Date.parse(asset.quoteCheckedAt)<86400000))}
         weights={draft.buckets.map(bucket=>({id:bucket.id,percent:values && values.total>0?(values.values.get(bucket.id)??0)/values.total*100:0}))}/>
-      {screen === "dashboard" && dirty && (
-        <div className={styles.unsavedBar}>
-          <p>목표 비중이 아직 저장되지 않았습니다.</p>
-          <SaveStatus dirty={dirty} saving={saving} onSave={save} />
-        </div>
-      )}
       {screen !== "edit" && screen !== "dashboard" && (
         <div className={styles.heading}>
           <div>
@@ -1904,7 +1898,6 @@ export default function PortfolioBuilder({
               <RefreshCw size={16} />{" "}
               {refreshing || quotesRefreshing ? "갱신 중" : "시세 갱신"}
             </button>}
-            <SaveStatus dirty={dirty} saving={saving} onSave={save} showSaved={["strategy", "allocation"].includes(screen) && !reviewDirty} />
           </div>
         </div>
       )}
@@ -2666,20 +2659,8 @@ export default function PortfolioBuilder({
           {screen === "allocation" && show3d && (
             <Portfolio3D portfolio={draft} holdings={holdings} />
           )}
-          {screen === "edit" && dirty && (
-            <div className={styles.assetEditorSave}>
-              <SaveStatus dirty={dirty} saving={saving} onSave={save} saveLabel="자산 변경 저장" />
-            </div>
-          )}
           {screen === "edit" && <CashTransfers portfolio={draft} accounts={cashAccounts} disabled={dirty || saving} onDirty={setTransferDirty} onSaved={(next,message)=>{portfolioCache.set(userId,next);setDraft(next);setDirty(false);onNotice(message);}} />}
         </>
-      )}
-      {(screen === "allocation" || screen === "edit" || screen === "preferences") && dirty && (
-        <div className={styles.mobileSaveBar}>
-          <div>
-            <SaveStatus dirty={dirty} saving={saving} onSave={save} />
-          </div>
-        </div>
       )}
       {screen === "rebalance" && assetCount === 0 && rebalanceEmpty}
       {screen === "rebalance" && assetCount > 0 && <DrawdownNotice portfolio={draft} drawdown={indexDrawdown} onReview={() => { setStrategyTab("drawdown"); onNavigate("strategy"); }} />}
@@ -3455,6 +3436,12 @@ export default function PortfolioBuilder({
           </section>
         </>
       )}
+      <SaveBar
+        dirty={dirty}
+        saving={saving}
+        onSave={save}
+        message={screen === "dashboard" ? "목표 비중을 아직 저장하지 않았어요" : screen === "edit" ? "자산 변경 내용을 아직 저장하지 않았어요" : undefined}
+      />
     </div>
   );
 }
