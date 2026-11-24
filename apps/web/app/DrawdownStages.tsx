@@ -57,7 +57,7 @@ export default function DrawdownStages({ portfolio, drawdown, onChange, onNotice
         </div>
         <p className={styles.lead}>
           코스피, S&amp;P 500, 나스닥이 52주 고점에서 얼마나 내려왔는지에 따라 쓸 목표 비중을 미리 정해 둡니다.
-          단계에 들어서면 리밸런싱 화면에서 안내하고, 목표는 확인한 뒤에만 바뀝니다.
+          단계에 들어서면 리밸런싱 화면에서 안내하고 목표는 확인한 뒤에만 바뀝니다.
         </p>
         <button
           type="button"
@@ -180,7 +180,7 @@ export default function DrawdownStages({ portfolio, drawdown, onChange, onNotice
           <>
             <IndexRangeRow row={drawdown.data} stages={plan.stages} />
             <small>
-              {indexCloseDay(drawdown.data.closeDate)} 종가 기준입니다. 막대는 최근 52주 저점부터 고점까지이고, 세로선은 하락 단계가 시작되는 지점입니다.
+              {indexCloseDay(drawdown.data.closeDate)} 종가 기준입니다. 막대는 최근 52주 저점부터 고점까지입니다. 세로선은 하락 단계가 시작되는 지점입니다.
             </small>
           </>
         )}

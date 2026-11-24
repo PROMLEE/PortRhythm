@@ -777,7 +777,7 @@ function calculateRebalance(
       advice,
       unaffordableBuys: unaffordableBuys.get(bucket.id) ?? [],
       separateReview: separate.length
-        ? `${separate.join(" · ")}: 자산 합계에는 포함되며, 매수·매도 수량은 자동 계산하지 않습니다.`
+        ? `${separate.join(" · ")}: 자산 합계에는 포함되며 매수·매도 수량은 자동 계산하지 않습니다.`
         : null,
     };
   });

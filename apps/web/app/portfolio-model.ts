@@ -393,5 +393,5 @@ export function missingPriceMessage(names: string[]): string {
   if (names.length === 0) return "";
   const shown = names.slice(0, 3).join(", ");
   const rest = names.length > 3 ? ` 외 ${names.length - 3}개` : "";
-  return `${shown}${rest}의 가격을 확인하지 못해 추천을 계산할 수 없습니다. 시세를 다시 불러오고, 계속 남으면 종목 코드를 확인해 주세요.`;
+  return `${shown}${rest}의 가격을 확인하지 못해 추천을 계산할 수 없습니다. 시세를 다시 불러온 뒤에도 남으면 종목 코드를 확인해 주세요.`;
 }

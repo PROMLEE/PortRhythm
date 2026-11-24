@@ -1842,7 +1842,7 @@ export default function PortfolioBuilder({
         )}
         <h1>내 투자 원칙부터 정해보세요.</h1>
         <p>
-          어떤 자산을 몇 퍼센트 보유할지 직접 정하고, 종목코드로 실제 자산을
+          어떤 자산을 몇 퍼센트 보유할지 직접 정하고 종목코드로 실제 자산을
           연결할 수 있습니다.
         </p>
         <div>
@@ -2760,7 +2760,7 @@ export default function PortfolioBuilder({
                   ? `${marketSession.preferredMarket === "KR" ? "국내" : "미국"} 정규장 우선 · 같은 포트의 자동 후보에 적용됩니다. 직접 고른 종목은 유지합니다.`
                   : marketSession ? marketSession.KR.status === "unknown" || marketSession.US.status === "unknown" ? "장 일정 미확인 · 기존 후보 순서로 계산합니다." : "정규장 외 · 기존 후보 순서로 계산합니다."
                   : "장 일정 확인 전 · 기존 후보 순서로 계산합니다."}</p>
-                <p className={styles.help}>범위 밖 포트만 자동으로 제안하고, 범위 안 포트는 종목을 직접 고를 때만 계산합니다.</p>
+                <p className={styles.help}>범위 밖 포트만 자동으로 제안하고 범위 안 포트는 종목을 직접 고를 때만 계산합니다.</p>
 
             <div className={styles.previewSummary} aria-label="이번 계산 기준">
               <span>현재 자산 {fmt(advice.currentTotal)}</span>
@@ -2947,7 +2947,7 @@ export default function PortfolioBuilder({
                             </dl>
                           {!amount && advice.newCash > 0 && action === "add" && Math.round(item.projectedPercent * 10) < Math.round(item.currentPercent * 10) && (
                             <p className={styles.shareDilutionNote}>
-                              이 포트의 금액은 {fmt([...itemTrades, ...itemCryptoTrades].filter(trade => trade.side === "buy").reduce((sum, trade) => sum + trade.amountKrw, 0))} 늘지만, 전체 자산에는 {fmt(advice.newCash)}이 추가되어 현재보다 비중이 낮아집니다.
+                              이 포트의 금액은 {fmt([...itemTrades, ...itemCryptoTrades].filter(trade => trade.side === "buy").reduce((sum, trade) => sum + trade.amountKrw, 0))} 늘지만 전체 자산에는 {fmt(advice.newCash)}이 추가되어 현재보다 비중이 낮아집니다.
                             </p>
                           )}
 
@@ -3014,7 +3014,7 @@ export default function PortfolioBuilder({
               매수에 사용할 종목을 포트별로 등록하세요. 등록된 후보와 보유
               종목을 기준으로 위의 조정 수량을 계산합니다. 포트별 순서가 매수
               우선순위입니다. 포트 변경·삭제는 같은 코드의 기존 자동 배정에도
-              영향을 주며, 직접 배정은 유지됩니다.
+              영향을 주며 직접 배정은 유지됩니다.
             </p>
             <div className={styles.ownedRulesHead}>
               <strong>후보 종목 검색</strong>

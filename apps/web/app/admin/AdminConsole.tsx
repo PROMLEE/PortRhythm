@@ -373,7 +373,7 @@ export default function AdminConsole() {
                       <small>
                         {editing?.push_requested
                           ? "이 공지는 알림을 이미 요청했습니다. 같은 공지는 한 번만 발송합니다."
-                          : "게시 상태에서 선택할 수 있습니다. 예약 공지는 게시 시각 이후 발송하며, 알림을 켠 기기만 수신합니다."}
+                          : "게시 상태에서 선택할 수 있습니다. 예약 공지는 게시 시각 이후 발송하며 알림을 켠 기기만 수신합니다."}
                       </small>
                       <div className={styles.actions}>
                         <button
@@ -458,7 +458,7 @@ export default function AdminConsole() {
                 <p className={styles.note}>
                   PortRhythm에 등록된 계정만 표시합니다. 개인의 자산·금액은
                   조회하지 않습니다. 기존 계정의 서비스 등록 시각은 운영 화면
-                  도입 시각이며, 로그인 이력은 도입 이후부터 집계합니다.
+                  도입 시각이며 로그인 이력은 도입 이후부터 집계합니다.
                 </p>
                 <form
                   className={styles.search}

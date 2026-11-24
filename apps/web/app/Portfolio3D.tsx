@@ -259,7 +259,7 @@ export default function Portfolio3D({ portfolio, holdings }: Props) {
       <div className={styles.heading}>
         <div>
           <h2>포트 구성</h2>
-          <p>막대를 눌러 금액을 보고, 드래그해 회전하세요.</p>
+          <p>막대를 눌러 금액을 보고 드래그해 회전하세요.</p>
         </div>
         <div className={styles.modes} aria-label="묶음 기준">
           {(["symbol", "bucket", "broker"] as const).map((option) => (
