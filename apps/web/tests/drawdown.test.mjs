@@ -12,6 +12,7 @@ async function load(path) {
 const {
   applyDrawdownStage, createDrawdownPlan, fiftyTwoWeekDrawdown, parseDrawdownPlan,
   pruneDrawdownPlan, recommendedStage, stageMatchesBuckets, stageTotal,
+  setDrawdownEnabled, drawdownTargetsLeftOver, restoreBaseTargets,
 } = await load("../app/drawdown.ts");
 const { parseIndexRows, previousDay } = await load("../lib/index-history.ts");
 
@@ -125,6 +126,50 @@ test("parsing rejects invalid plans with specific messages", () => {
   bad.stages[1] = { ...bad.stages[1], threshold: 10.25 };
   assert.ok("error" in parseDrawdownPlan(bad, buckets));
   assert.equal(parseDrawdownPlan(plan({ appliedStageId: "missing" }), buckets).plan.appliedStageId, null);
+});
+
+test("turning the plan off restores base targets after a deeper stage was applied", () => {
+  const applied = applyDrawdownStage({ buckets, drawdownPlan: plan() }, "s20", new Date("2026-11-20T00:00:00Z"));
+  assert.deepEqual(applied.buckets.map((b) => b.targetPercent), [80, 20]);
+  const { portfolio, restored } = setDrawdownEnabled(applied, false);
+  assert.equal(restored, true);
+  assert.equal(portfolio.drawdownPlan.enabled, false);
+  assert.equal(portfolio.drawdownPlan.appliedStageId, null);
+  assert.deepEqual(portfolio.buckets.map((b) => b.targetPercent), [60, 40]);
+  assert.equal(drawdownTargetsLeftOver(portfolio), false);
+});
+
+test("turning the plan off keeps targets when no deeper stage is applied", () => {
+  const custom = [{ ...buckets[0], targetPercent: 55 }, { ...buckets[1], targetPercent: 45 }];
+  const { portfolio, restored } = setDrawdownEnabled({ buckets: custom, drawdownPlan: plan() }, false);
+  assert.equal(restored, false);
+  assert.deepEqual(portfolio.buckets.map((b) => b.targetPercent), [55, 45]);
+  const base = applyDrawdownStage({ buckets: custom, drawdownPlan: plan() }, "s0", new Date());
+  assert.equal(setDrawdownEnabled(base, false).restored, false);
+});
+
+test("a saved disabled plan with deeper targets is detected and can be restored", () => {
+  const saved = {
+    buckets: [{ ...buckets[0], targetPercent: 70 }, { ...buckets[1], targetPercent: 30 }],
+    drawdownPlan: plan({ enabled: false, appliedStageId: "s10", appliedAt: "2026-11-01T00:00:00.000Z" }),
+  };
+  assert.equal(drawdownTargetsLeftOver(saved), true);
+  const fixed = restoreBaseTargets(saved);
+  assert.deepEqual(fixed.buckets.map((b) => b.targetPercent), [60, 40]);
+  assert.equal(drawdownTargetsLeftOver(fixed), false);
+  assert.equal(drawdownTargetsLeftOver({ ...saved, drawdownPlan: { ...saved.drawdownPlan, enabled: true } }), false);
+});
+
+test("restoring is skipped when the base stage does not add up to 100%", () => {
+  const broken = plan({ appliedStageId: "s10", stages: [
+    { id: "s0", threshold: 0, targets: { stock: 50, bond: 40 } },
+    { id: "s10", threshold: 10, targets: { stock: 70, bond: 30 } },
+  ] });
+  const input = { buckets: [{ ...buckets[0], targetPercent: 70 }, { ...buckets[1], targetPercent: 30 }], drawdownPlan: broken };
+  const { portfolio, restored } = setDrawdownEnabled(input, false);
+  assert.equal(restored, false);
+  assert.deepEqual(portfolio.buckets.map((b) => b.targetPercent), [70, 30]);
+  assert.equal(portfolio.drawdownPlan.enabled, false);
 });
 
 test("KIS index rows parse into dated closes and skip malformed rows", () => {
