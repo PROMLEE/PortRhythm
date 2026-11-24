@@ -466,7 +466,6 @@ export default function AccountsManager({
           <button type="button" onClick={onCashManage}>
             현금 관리·이체
           </button>
-          <p>증권사·계좌명과 계좌별 주식·ETF를 직접 관리하세요.</p>
         </div>
         <button disabled={busy || dirty} onClick={() => setCreating(!creating)}>
           <Plus size={16} />

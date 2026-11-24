@@ -356,7 +356,7 @@ export default function CashTransfers({
               <small>
                 {kind === "transfer"
                   ? "총자산은 유지하며 외부 입출금으로 기록하지 않습니다."
-                  : "현금 잔고와 자산 기록의 입출금 내역을 함께 반영합니다. 이미 기록한 같은 입출금은 중복 등록하지 마세요."}
+                  : "잔고와 자산 기록에 함께 반영합니다. 이미 기록한 입출금은 다시 등록하지 마세요."}
               </small>
               {kind !== "transfer" && (
                 <small>
@@ -481,7 +481,7 @@ export default function CashTransfers({
             </article>
           ))
         ) : (
-          <p>아직 기록이 없습니다.</p>
+          <p>아직 입출금·이체 기록이 없습니다.</p>
         )}
       </details>
     </details>

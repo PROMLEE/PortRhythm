@@ -1259,11 +1259,6 @@ export default function PortfolioPage() {
               <div className={styles.pageHead}>
                 <div>
                   <h1>{view === "edit" ? "자산 수정" : "보유 자산"}</h1>
-                  <p>
-                    {view === "edit"
-                      ? "주식·가상자산·현금의 수량과 매입가를 한곳에서 관리하세요."
-                      : "현재가와 평균 매입가, 보유 자산의 평가손익을 확인하세요."}
-                  </p>
                 </div>
               </div>
               {view === "holdings" && !holdingsEmpty && (
@@ -1342,7 +1337,7 @@ export default function PortfolioPage() {
                   >
                     <Plus size={15} /> 자산 추가
                   </button>
-                  <span>종목을 눌러 수정하세요. 삭제는 ··· 메뉴에서 할 수 있어요.</span>
+                  <span>종목을 눌러 수정하세요. 삭제는 ··· 메뉴에서 할 수 있습니다.</span>
                   {assetAddOpen && (
                     <div id="asset-add-options" className={styles.assetAddOptions} role="group" aria-label="새 자산 등록 방법">
                       <button type="button" onClick={() => go("accounts")}>
