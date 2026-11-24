@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { ArrowLeft, ChevronRight, X } from "lucide-react";
 import styles from "./ServiceNotices.module.css";
+import NoticeTitle from "./NoticeTitle";
 type Notice = {
   id: string;
   title: string;
@@ -136,7 +137,7 @@ export default function ServiceNotices({
               {selected.important && (
                 <span className={styles.important}>중요 공지</span>
               )}
-              <h2>{selected.title}</h2>
+              <h2><NoticeTitle title={selected.title} /></h2>
               <time dateTime={selected.created_at}>
                 {date(selected.created_at)}
               </time>
@@ -162,7 +163,7 @@ export default function ServiceNotices({
                 {n.important && (
                   <small className={styles.important}>중요</small>
                 )}
-                <strong>{n.title}</strong>
+                <strong><NoticeTitle title={n.title} /></strong>
                 <time dateTime={n.created_at}>{date(n.created_at)}</time>
               </span>
               <ChevronRight size={18} aria-hidden="true" />

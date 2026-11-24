@@ -87,6 +87,7 @@ summary:focus:not(:focus-visible),
 }
 
 body { line-height: 1.5; -webkit-font-smoothing: antialiased; }
-h1,h2,h3 { text-wrap: balance; }
+/* Korean wraps between syllables by default; keep words whole in headings. */
+h1,h2,h3 { text-wrap: balance; word-break: keep-all; overflow-wrap: break-word; }
 button,a,input,select,summary { touch-action: manipulation; }
 @media(prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto !important; animation-duration:.01ms !important; transition-duration:.01ms !important; } }

@@ -101,7 +101,9 @@
 .row strong {
   font-size: 15px;
   line-height: 1.5;
-  overflow-wrap: anywhere;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  text-wrap: pretty;
 }
 .row svg {
   color: var(--muted);
@@ -119,7 +121,8 @@
   line-height: 1.5;
   letter-spacing: -0.025em;
   margin: 0 0 10px;
-  overflow-wrap: anywhere;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 .article p {
   white-space: pre-wrap;
