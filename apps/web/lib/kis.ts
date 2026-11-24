@@ -11,6 +11,7 @@ import { db } from "./db";
 import { domesticPreviousClose } from "./kis-quote-values";
 import { compactDate, parseIndexRows, previousDay, withoutUnclosedKoreanSession } from "./index-history";
 import type { DrawdownIndex, IndexClose } from "../app/drawdown";
+import { createRequestPacer, kisQuoteIntervalMs } from "./kis-pacing";
 
 const BASE =
   process.env.KIS_BASE_URL ?? "https://openapi.koreainvestment.com:9443";
@@ -27,20 +28,10 @@ const masterCache = new Map<
   { instruments: Instrument[]; expiresAt: number }
 >();
 const pendingMasters = new Map<Market, Promise<Instrument[]>>();
-let nextQuoteAt = 0;
-let quoteQueue: Promise<void> = Promise.resolve();
+const paceQuoteRequest = createRequestPacer(kisQuoteIntervalMs(BASE));
 
 function wait(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));
-}
-
-async function paceQuoteRequest() {
-  const turn = quoteQueue.then(async () => {
-    await wait(Math.max(0, nextQuoteAt - Date.now()));
-    nextQuoteAt = Date.now() + 600;
-  });
-  quoteQueue = turn.catch(() => {});
-  await turn;
 }
 
 function configured() {
