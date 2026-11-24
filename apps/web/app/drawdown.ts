@@ -149,6 +149,61 @@ export function applyDrawdownStage<T extends { buckets: Bucket[]; drawdownPlan?:
   };
 }
 
+/**
+ * The non-base stage whose targets were last copied into the buckets, or null when the
+ * buckets are on the base stage (or were never changed by the plan).
+ */
+export function appliedDeeperStage(plan: DrawdownPlan | null | undefined): DrawdownStage | null {
+  if (!plan?.appliedStageId) return null;
+  const stages = sortStages(plan.stages);
+  const applied = stages.find((stage) => stage.id === plan.appliedStageId);
+  return applied && applied.id !== stages[0]?.id ? applied : null;
+}
+
+/**
+ * True when the plan is turned off but the buckets still hold a deeper stage's targets,
+ * so rebalancing would keep following the drawdown stage.
+ */
+export function drawdownTargetsLeftOver(portfolio: { buckets: Bucket[]; drawdownPlan?: DrawdownPlan | null }) {
+  const plan = portfolio.drawdownPlan;
+  if (!plan || plan.enabled) return false;
+  const applied = appliedDeeperStage(plan);
+  const baseStage = sortStages(plan.stages)[0];
+  return Boolean(applied && baseStage && !stageMatchesBuckets(baseStage, portfolio.buckets));
+}
+
+/**
+ * Puts the base stage's targets back into the buckets and clears the applied stage.
+ * The base stage must add up to 100%, otherwise the portfolio is returned unchanged.
+ */
+export function restoreBaseTargets<T extends { buckets: Bucket[]; drawdownPlan?: DrawdownPlan | null }>(portfolio: T): T {
+  const plan = portfolio.drawdownPlan;
+  const baseStage = plan ? sortStages(plan.stages)[0] : undefined;
+  if (!plan || !baseStage || Math.abs(stageTotal(baseStage, portfolio.buckets) - 100) > 0.05) return portfolio;
+  return {
+    ...portfolio,
+    buckets: portfolio.buckets.map((bucket) => ({ ...bucket, targetPercent: stageTarget(baseStage, bucket.id) })),
+    drawdownPlan: { ...plan, appliedStageId: null, appliedAt: null },
+  };
+}
+
+/**
+ * Turns the plan on or off. Turning it off while a deeper stage is applied restores the
+ * base stage's targets, because rebalancing reads the bucket targets directly and would
+ * otherwise keep using the drawdown stage after the plan is off.
+ */
+export function setDrawdownEnabled<T extends { buckets: Bucket[]; drawdownPlan?: DrawdownPlan | null }>(
+  portfolio: T,
+  enabled: boolean,
+): { portfolio: T; restored: boolean } {
+  const plan = portfolio.drawdownPlan;
+  if (!plan) return { portfolio, restored: false };
+  const toggled = { ...portfolio, drawdownPlan: { ...plan, enabled } };
+  if (enabled || !drawdownTargetsLeftOver(toggled)) return { portfolio: toggled, restored: false };
+  const restored = restoreBaseTargets(toggled);
+  return { portfolio: restored, restored: restored !== toggled };
+}
+
 /** Drops targets of buckets that no longer exist so stale ids are never saved. */
 export function pruneDrawdownPlan(plan: DrawdownPlan, buckets: Pick<Bucket, "id">[]): DrawdownPlan {
   const ids = new Set(buckets.map((bucket) => bucket.id));

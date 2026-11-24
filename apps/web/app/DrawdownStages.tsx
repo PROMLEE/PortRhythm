@@ -7,9 +7,13 @@ import {
   DRAWDOWN_INDEXES,
   MAX_DRAWDOWN_STAGES,
   applyDrawdownStage,
+  appliedDeeperStage,
   createDrawdownPlan,
+  drawdownTargetsLeftOver,
   indexLabel,
   recommendedStage,
+  restoreBaseTargets,
+  setDrawdownEnabled,
   sortStages,
   stageLabel,
   stageMatchesBuckets,
@@ -100,6 +104,18 @@ export default function DrawdownStages({ portfolio, drawdown, onChange, onNotice
     onChange(applyDrawdownStage(portfolio, stage.id, new Date()));
     onNotice(`목표 비중을 ${stageLabel(stage)} 단계 값으로 바꿨습니다. 변경 내용을 저장하면 적용됩니다.`);
   }
+  function toggle(enabled: boolean) {
+    const result = setDrawdownEnabled(portfolio, enabled);
+    onChange(result.portfolio);
+    if (result.restored)
+      onNotice("하락 단계를 끄면서 목표 비중을 평상시 단계 값으로 되돌렸습니다. 변경 내용을 저장하면 적용됩니다.");
+  }
+  function restoreBase() {
+    onChange(restoreBaseTargets(portfolio));
+    onNotice("목표 비중을 평상시 단계 값으로 되돌렸습니다. 변경 내용을 저장하면 적용됩니다.");
+  }
+  const leftOver = drawdownTargetsLeftOver(portfolio) ? appliedDeeperStage(plan) : null;
+  const baseBalanced = Math.abs(stageTotal(baseStage, buckets) - 100) <= 0.05;
 
   return (
     <section className={`${base.panel} ${styles.panel}`} aria-labelledby="drawdown-title">
@@ -109,11 +125,23 @@ export default function DrawdownStages({ portfolio, drawdown, onChange, onNotice
           <input
             type="checkbox"
             checked={plan.enabled}
-            onChange={(event) => update({ ...plan, enabled: event.target.checked })}
+            onChange={(event) => toggle(event.target.checked)}
           />
           사용
         </label>
       </div>
+
+      {leftOver && (
+        <div className={styles.suggestion} data-pending>
+          <p>
+            하락 단계를 껐지만 목표 비중은 아직 <strong>{stageLabel(leftOver)}</strong> 단계 값입니다.
+            리밸런싱도 이 목표를 기준으로 계산됩니다.
+          </p>
+          <button type="button" className={styles.apply} disabled={!baseBalanced} onClick={restoreBase}>
+            평상시 목표로 되돌리기
+          </button>
+        </div>
+      )}
 
       <div className={styles.settings}>
         <label>
@@ -263,6 +291,14 @@ export default function DrawdownStages({ portfolio, drawdown, onChange, onNotice
 /** Rebalance-screen reminder shown only when the plan suggests targets that differ from the current ones. */
 export function DrawdownNotice({ portfolio, drawdown, onReview }: { portfolio: Portfolio; drawdown: IndexDrawdownState; onReview: () => void }) {
   const plan = portfolio.drawdownPlan;
+  const leftOver = drawdownTargetsLeftOver(portfolio) ? appliedDeeperStage(plan) : null;
+  if (leftOver)
+    return (
+      <p className={styles.notice}>
+        <span>하락 단계를 껐지만 목표 비중이 아직 {stageLabel(leftOver)} 단계 값입니다. 평상시 목표로 되돌릴 수 있습니다.</span>
+        <button type="button" onClick={onReview}>단계 확인</button>
+      </p>
+    );
   if (!plan?.enabled || !drawdown.data) return null;
   const suggested = recommendedStage(plan, drawdown.data.drawdownPercent);
   if (!suggested || stageMatchesBuckets(suggested, portfolio.buckets)) return null;
