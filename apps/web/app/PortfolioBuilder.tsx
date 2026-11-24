@@ -56,6 +56,9 @@ import {
   evaluationAssetCount,
   holdingStartBuckets,
   savedNoticeTarget,
+  targetTotalStatus,
+  missingPriceAssetNames,
+  missingPriceMessage,
   manualAssetValueKrw,
   portfolioValues,
   type CashFlow,
@@ -1281,14 +1284,9 @@ export default function PortfolioBuilder({
     if (!draft) return;
     if (draft.manualAssets.some((asset) => !asset.name.trim()))
       return onNotice("직접 입력 자산 이름을 입력해 주세요.");
-    const total = draft.buckets.reduce(
-      (sum, bucket) => sum + bucket.targetPercent,
-      0,
-    );
-    if (Math.abs(total - 100) > 0.01)
-      return onNotice(
-        `목표 비중 합계가 ${pct(total)}입니다. 100%로 맞춰 주세요.`,
-      );
+    const targetStatus = targetTotalStatus(draft.buckets);
+    if (!targetStatus.balanced)
+      return onNotice(targetStatus.message);
     const saved = portfolioCache.get(userId);
     const changedSections = ([
       ["title", "포트 이름"], ["buckets", "목표 비중"], ["tolerancePercent", "비중 허용 오차"], ["toleranceMode", "허용 오차 기준"], ["relativeTolerancePercent", "목표 금액 허용 오차"],
@@ -1553,8 +1551,8 @@ export default function PortfolioBuilder({
       )).length
     : 0;
   const outsideNow = rebalanceReady ? advice.items.filter(item => !withinPortfolioTolerance(draft!, item.bucket.targetPercent, item.currentPercent)) : [];
-  const targetTotal =
-    draft?.buckets.reduce((sum, bucket) => sum + bucket.targetPercent, 0) ?? 0;
+  const targetStatus = targetTotalStatus(draft?.buckets ?? []);
+  const missingPriceNames = draft ? missingPriceAssetNames(draft, holdings) : [];
   const historyCutoff = historyPeriod === "all" ? "" : new Date(Date.now() - Number(historyPeriod) * 86400000).toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
   function periodPoints(bucketKey: string) {
     const points = draft?.snapshots.filter((point) => point.bucketKey === bucketKey && (!historyCutoff || point.date >= historyCutoff)) ?? [];
@@ -2067,7 +2065,7 @@ export default function PortfolioBuilder({
           active={strategyTab}
           onChange={setStrategyTab}
           attention={{
-            targets: targetTotal === 100 ? undefined : "목표 합계가 100%가 아닙니다",
+            targets: targetStatus.balanced ? undefined : "목표 합계가 100%가 아닙니다",
             drawdown: drawdownNeedsFix ? "합계가 100%가 아닌 하락 단계가 있습니다" : undefined,
           }}
           panels={{
@@ -2150,11 +2148,8 @@ export default function PortfolioBuilder({
                 );
               })}
             </div>
-            <p className={targetTotal === 100 ? styles.ok : styles.warning}>
-              목표 합계 {pct(targetTotal)}
-              {targetTotal === 100
-                ? " · 저장할 수 있습니다."
-                : " · 저장하려면 100%로 맞춰 주세요."}
+            <p className={targetStatus.balanced ? styles.ok : styles.warning} role="status">
+              {targetStatus.message}
             </p>
           </section>
             ),
@@ -2721,7 +2716,7 @@ export default function PortfolioBuilder({
               <div className={styles.rebalanceStatus}>
                 <span>
                   {values?.missingPrices
-                    ? `가격 미확인 ${values.missingPrices}개 종목을 확인해 주세요.`
+                    ? missingPriceMessage(missingPriceNames) || `가격 미확인 자산 ${values.missingPrices}개를 확인해 주세요.`
                     : values?.unassigned
                       ? `미분류 자산 ${fmt(values.unassigned)}을 배정해 주세요.`
                       : "가격이 있는 자산을 등록하면 추천이 표시됩니다."}

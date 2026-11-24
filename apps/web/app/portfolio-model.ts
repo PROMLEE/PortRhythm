@@ -342,3 +342,56 @@ export function savedNoticeTarget(input: {
   if (input.unassigned > 0 && input.screen !== "allocation") return "allocation";
   return null;
 }
+
+const TARGET_TOTAL_EPSILON = 0.01;
+
+/**
+ * 목표 비중 합계 상태. 0.1% 단위 입력의 부동소수점 오차(예: 99.99999999999999)를 100%로 본다.
+ * 저장 검증(클라이언트·API)과 같은 허용 범위를 쓴다.
+ */
+export function targetTotalStatus(buckets: Pick<Bucket, "targetPercent">[]): {
+  total: number;
+  balanced: boolean;
+  /** 100%까지 남은 %p. 초과면 음수. */
+  remaining: number;
+  label: string;
+  message: string;
+} {
+  const raw = buckets.reduce((sum, bucket) => sum + bucket.targetPercent, 0);
+  const balanced = Math.abs(raw - 100) <= TARGET_TOTAL_EPSILON;
+  const total = balanced ? 100 : raw;
+  const remaining = balanced ? 0 : 100 - raw;
+  const digits = !balanced && Math.abs(remaining) < 0.1 ? 2 : 1;
+  const label = `목표 합계 ${total.toFixed(digits)}%`;
+  const gap = Math.abs(remaining).toFixed(digits);
+  const message = balanced
+    ? `${label} · 저장할 수 있습니다.`
+    : remaining > 0
+      ? `${label} · ${gap}%p가 남았습니다. 100%로 맞춰야 저장할 수 있습니다.`
+      : `${label} · ${gap}%p 초과했습니다. 100%로 맞춰야 저장할 수 있습니다.`;
+  return { total, balanced, remaining, label, message };
+}
+
+/** 가격을 확인하지 못한 주식·가상자산 이름. portfolioValues의 missingPrices와 같은 기준이다. */
+export function missingPriceAssetNames(
+  portfolio: Pick<Portfolio, "cryptoAssets">,
+  holdings: Pick<Holding, "name" | "symbol" | "currentPrice" | "capturedPrice">[],
+): string[] {
+  const names: string[] = [];
+  for (const holding of holdings) {
+    if (holding.currentPrice === null && holding.capturedPrice === null)
+      names.push(holding.name || holding.symbol);
+  }
+  for (const asset of portfolio.cryptoAssets) {
+    if (asset.quotedPriceKrw === null) names.push(asset.name || asset.marketCode);
+  }
+  return [...new Set(names)];
+}
+
+/** 리밸런싱을 막는 가격 미확인 안내. 앞의 3개 이름만 보이고 나머지는 개수로 줄인다. */
+export function missingPriceMessage(names: string[]): string {
+  if (names.length === 0) return "";
+  const shown = names.slice(0, 3).join(", ");
+  const rest = names.length > 3 ? ` 외 ${names.length - 3}개` : "";
+  return `${shown}${rest}의 가격을 확인하지 못해 추천을 계산할 수 없습니다. 시세를 다시 불러오고, 계속 남으면 종목 코드를 확인해 주세요.`;
+}
