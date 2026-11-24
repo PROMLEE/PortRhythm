@@ -538,7 +538,7 @@ export default function PortfolioPage() {
       setDraft(found);
       setNotice(
         found.length
-          ? `${found.length}개 종목을 찾았습니다. ${mirae ? "CMA/RP와 퇴직신탁은 제외했습니다. 평가금액에서 주당 가격을 계산했습니다. " : ""}저장 전 종목명·코드·수량·가격을 확인하세요.`
+          ? `${found.length}개 종목을 찾았습니다. ${mirae ? "CMA/RP와 퇴직신탁은 제외했습니다. 평가금액에서 주당 가격을 계산했습니다. " : ""}저장 전 종목명, 코드, 수량, 가격을 확인하세요.`
           : "종목을 찾지 못했습니다. 화면 종류를 확인하거나 직접 추가해 주세요.",
       );
     } catch {
@@ -923,7 +923,7 @@ export default function PortfolioPage() {
           <div>
             <h2>내 투자 기준을 세워보세요</h2>
             <p>
-              보유 자산을 정리하고, 목표 비중에 맞는 투자 결정을 준비하세요.
+              보유 자산을 정리하고 목표 비중에 맞는 투자 결정을 준비하세요.
             </p>
             <small className={styles.authSignInLabel}>
               카카오 또는 네이버 계정으로 시작
@@ -1259,11 +1259,6 @@ export default function PortfolioPage() {
               <div className={styles.pageHead}>
                 <div>
                   <h1>{view === "edit" ? "자산 수정" : "보유 자산"}</h1>
-                  <p>
-                    {view === "edit"
-                      ? "주식·가상자산·현금의 수량과 매입가를 한곳에서 관리하세요."
-                      : "현재가와 평균 매입가, 보유 자산의 평가손익을 확인하세요."}
-                  </p>
                 </div>
               </div>
               {view === "holdings" && !holdingsEmpty && (
@@ -1342,7 +1337,7 @@ export default function PortfolioPage() {
                   >
                     <Plus size={15} /> 자산 추가
                   </button>
-                  <span>종목을 눌러 수정하세요. 삭제는 ··· 메뉴에서 할 수 있어요.</span>
+                  <span>종목을 눌러 수정하세요. 삭제는 ··· 메뉴에서 할 수 있습니다.</span>
                   {assetAddOpen && (
                     <div id="asset-add-options" className={styles.assetAddOptions} role="group" aria-label="새 자산 등록 방법">
                       <button type="button" onClick={() => go("accounts")}>
@@ -1351,7 +1346,7 @@ export default function PortfolioPage() {
                       </button>
                       <button type="button" onClick={() => go("import")}>
                         <strong>캡처로 추가</strong>
-                        <small>증권사 잔고 캡처를 읽고, 인식 결과를 확인해 등록하세요.</small>
+                        <small>증권사 잔고 캡처를 읽고 인식 결과를 확인해 등록하세요.</small>
                       </button>
                     </div>
                   )}
@@ -1426,7 +1421,7 @@ export default function PortfolioPage() {
                           <div className={styles.holdingDeleteConfirm} role="group" aria-label={`${row.name} 삭제 확인`}>
                             <strong>{row.name}을 등록 자산에서 삭제할까요?</strong>
                             <p>{row.broker} · {row.account} · {row.quantity}주</p>
-                            <p>앱의 보유 정보만 삭제됩니다. 실제 증권사 잔고는 바뀌지 않으며, 다시 보려면 자산을 재등록해야 합니다.</p>
+                            <p>앱의 보유 정보만 삭제됩니다. 실제 증권사 잔고는 바뀌지 않습니다. 다시 보려면 자산을 다시 등록하세요.</p>
                             <div>
                               <button type="button" onClick={() => setPendingHoldingRemoval(null)} disabled={deletingHoldingId !== null}>취소</button>
                               <button type="button" className={styles.confirmDelete} onClick={() => void removeHolding(row.id)} disabled={deletingHoldingId !== null || holdingSaving}>{deletingHoldingId === row.id ? "삭제 중…" : "삭제 확인"}</button>
@@ -1599,7 +1594,7 @@ export default function PortfolioPage() {
               <div className={styles.pageHead}>
                 <div>
                   <h1>캡처에서 자산 가져오기</h1>
-                  <p>잔고 화면을 읽고, 확인한 내용만 계정에 저장합니다.</p>
+                  <p>잔고 화면을 읽고 확인한 내용만 계정에 저장합니다.</p>
                 </div>
               </div>
               <div className={styles.importGrid}>

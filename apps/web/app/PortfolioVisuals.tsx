@@ -77,7 +77,7 @@ export default function PortfolioVisuals({
         {showHeading && (
           <div>
             <h2>포트별 자산 비중</h2>
-            <p>포트를 선택하면 상세 금액을 볼 수 있어요.</p>
+            <p>포트를 선택하면 상세 금액을 볼 수 있습니다.</p>
           </div>
         )}
         {hasValues && hasTargets && (

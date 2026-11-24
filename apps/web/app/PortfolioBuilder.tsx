@@ -1769,10 +1769,10 @@ export default function PortfolioBuilder({
       "목표 설계",
       "원하는 포트 비중과 리밸런싱 기준을 정하세요.",
     ],
-    preferences: ["설정", "필요한 설정을 골라 변경하세요."],
+    preferences: ["설정", ""],
     composition: [
       "포트 비중",
-      "현재 보유 비중과 목표의 차이를 살펴보세요.",
+      "",
     ],
     allocation: [
       "자산 배정",
@@ -1788,9 +1788,9 @@ export default function PortfolioBuilder({
     ],
     history: [
       "자산 기록",
-      "포트별 자산 추이와 입출금 기록을 확인하세요.",
+      "",
     ],
-    detail: [selectedAsset?.kind === "candidate" ? "매수 후보 상세" : "자산 상세", selectedAsset?.kind === "candidate" ? "종목 정보와 기존 보유 여부를 확인하세요." : "보유 현황과 평가손익을 확인하세요."],
+    detail: [selectedAsset?.kind === "candidate" ? "매수 후보 상세" : "자산 상세", ""],
   }[screen];
 
   if (loading)
@@ -1828,7 +1828,7 @@ export default function PortfolioBuilder({
         <div className={styles.heading}>
           <div>
             <h1>{titles[0]}</h1>
-            <p>{titles[1]}</p>
+            {titles[1] && <p>{titles[1]}</p>}
           </div>
         </div>
         {rebalanceEmpty}
@@ -1842,7 +1842,7 @@ export default function PortfolioBuilder({
         )}
         <h1>내 투자 원칙부터 정해보세요.</h1>
         <p>
-          어떤 자산을 몇 퍼센트 보유할지 직접 정하고, 종목코드로 실제 자산을
+          어떤 자산을 몇 퍼센트 보유할지 직접 정하고 종목코드로 실제 자산을
           연결할 수 있습니다.
         </p>
         <div>
@@ -1885,7 +1885,7 @@ export default function PortfolioBuilder({
         <div className={styles.heading}>
           <div>
             <h1>{titles[0]}</h1>
-            <p>{titles[1]}</p>
+            {titles[1] && <p>{titles[1]}</p>}
           </div>
           <div>
             {screen !== "preferences" && holdings.length + draft.cryptoAssets.length > 0 && <button
@@ -2160,9 +2160,8 @@ export default function PortfolioBuilder({
                   </select>
                 </label>
                 <small>{draft.toleranceMode === "relative"
-                  ? "각 포트의 목표 금액 대비 오차입니다. 목표 1,000만 원에 ±10%라면 900만~1,100만 원을 허용합니다."
-                  : "전체 자산에서 차지하는 비중의 차이입니다. 목표 20%에 ±2%p라면 18~22%를 허용합니다."}</small>
-                <small>추가 투입금이 있으면 이를 포함한 총자산으로 목표 금액을 계산합니다.</small>
+                  ? "예: 목표 1,000만 원, ±10% → 900만~1,100만 원 허용"
+                  : "예: 목표 20%, ±2%p → 18~22% 허용"}</small>
               </div>
               <label className={styles.toleranceInput}>
                 ±
@@ -2181,7 +2180,7 @@ export default function PortfolioBuilder({
               환율·손익 설정
             </button>
             <div className={styles.panelHead}><h2>리밸런싱 계산 설정</h2></div>
-            <p className={styles.help}>이번 계산에 적용됩니다. 추가 투입금과 조정할 종목은 리밸런싱에서 선택하세요.</p>
+            <p className={styles.help}>추가 투입금과 조정할 종목은 리밸런싱 화면에서 고릅니다.</p>
             <label className={styles.cashBudget}>리밸런싱 방법
               <select
                 value={rebalanceMode}
@@ -2203,8 +2202,8 @@ export default function PortfolioBuilder({
               </select>
             </label>
             <p className={styles.help}>{advice.cashAllocation
-              ? "현금 목표액을 남기고 초과분은 매수에 사용합니다. 부족분은 추가 투입금·매도 대금으로 채웁니다."
-              : "현금·RP 등 직접 입력 자산으로만 구성된 포트를 선택하면, 거래 후 현금 비중도 함께 계산합니다."}</p>
+              ? "현금 목표액은 남기고 초과분만 매수에 씁니다."
+              : "현금·RP로만 이뤄진 포트를 고르면 거래 후 현금 비중도 계산합니다."}</p>
             <div className={styles.rebalanceOptions}>
               {rebalanceMode === "add-only" && (
                 <label className={styles.cashBudget}>
@@ -2729,7 +2728,7 @@ export default function PortfolioBuilder({
                 {advice.items.filter(item => item.bucket.id === advice.cashAllocation?.bucketId
                   && !withinPortfolioTolerance(draft, item.bucket.targetPercent, item.projectedPercent)).map(item => (
                   <p key={item.bucket.id} className={styles.help} role="status">
-                    {item.bucket.name}이 허용 범위에 도달하지 못했습니다. 매수·매도 후보와 제외 설정을 확인하세요. 1주 단위·가용 예산에 따라 일부 차이가 남을 수 있습니다.
+                    {item.bucket.name}이 아직 허용 범위 밖입니다. 매수·매도 후보와 제외 설정을 확인하세요.
                   </p>
                 ))}
                 <div className={styles.rebalanceDisclosures}>
@@ -2761,7 +2760,7 @@ export default function PortfolioBuilder({
                   ? `${marketSession.preferredMarket === "KR" ? "국내" : "미국"} 정규장 우선 · 같은 포트의 자동 후보에 적용됩니다. 직접 고른 종목은 유지합니다.`
                   : marketSession ? marketSession.KR.status === "unknown" || marketSession.US.status === "unknown" ? "장 일정 미확인 · 기존 후보 순서로 계산합니다." : "정규장 외 · 기존 후보 순서로 계산합니다."
                   : "장 일정 확인 전 · 기존 후보 순서로 계산합니다."}</p>
-                <p className={styles.help}>허용 범위 밖은 자동으로 조정을 제안합니다. 현금이 범위를 벗어나면 다른 포트의 허용 상한 안에서 추가 매수도 계산합니다. 그 외 범위 안인 포트는 직접 종목을 선택할 때만 제안합니다.</p>
+                <p className={styles.help}>범위 밖 포트만 자동으로 제안하고 범위 안 포트는 종목을 직접 고를 때만 계산합니다.</p>
 
             <div className={styles.previewSummary} aria-label="이번 계산 기준">
               <span>현재 자산 {fmt(advice.currentTotal)}</span>
@@ -2773,14 +2772,11 @@ export default function PortfolioBuilder({
               <span>계산 기준 총액 {fmt(advice.targetTotal)}</span>
             </div>
             <p className={styles.help}>
-              주식은 1주, 가상자산은 소수점 8자리 단위로 계산하며 수수료·세금·환전 비용은 포함하지
-              않습니다. {rebalanceMode === "trade" && "매도 대금을 계좌 간 이동할 수 있다고 가정하므로 계좌별 주문 가능 금액·결제일을 별도로 확인하세요. "}
-              {rebalanceMode === "trade" && "주식 매도 제외는 해당 보유 항목에만 적용하며 추가 매수에는 영향을 주지 않습니다."}
+              주식은 1주, 가상자산은 소수점 8자리 단위로 계산합니다. 수수료·세금·환전 비용은 빠져 있습니다.
+              {rebalanceMode === "trade" && " 매도 대금은 계좌 간 이동이 가능하다고 가정하니, 계좌별 주문 가능 금액과 결제일은 따로 확인하세요."}
             </p>
                 <p className={styles.help}>
-                  {advice.cashAllocation ? "남은 거래 자금은 선택한 현금 포트에 반영합니다. 선택하지 않은 자산은 유지합니다." : "직접 입력 자산의 거래는 별도 검토합니다. 잔여 자금은 미배정으로 총액에 포함합니다."} 제안 확인 →
-                  증권사·거래소에서 직접 거래 → 실제 잔고 수정 순서로
-                  반영하세요.
+                  {advice.cashAllocation ? "남은 거래 자금은 선택한 현금 포트에 반영합니다." : "남은 자금은 미배정으로 총액에 포함합니다."}
                 </p>
                 </details>
                 </div>
@@ -2951,7 +2947,7 @@ export default function PortfolioBuilder({
                             </dl>
                           {!amount && advice.newCash > 0 && action === "add" && Math.round(item.projectedPercent * 10) < Math.round(item.currentPercent * 10) && (
                             <p className={styles.shareDilutionNote}>
-                              이 포트의 금액은 {fmt([...itemTrades, ...itemCryptoTrades].filter(trade => trade.side === "buy").reduce((sum, trade) => sum + trade.amountKrw, 0))} 늘지만, 전체 자산에는 {fmt(advice.newCash)}이 추가되어 현재보다 비중이 낮아집니다.
+                              이 포트의 금액은 {fmt([...itemTrades, ...itemCryptoTrades].filter(trade => trade.side === "buy").reduce((sum, trade) => sum + trade.amountKrw, 0))} 늘지만 전체 자산에는 {fmt(advice.newCash)}이 추가되어 현재보다 비중이 낮아집니다.
                             </p>
                           )}
 
@@ -3018,7 +3014,7 @@ export default function PortfolioBuilder({
               매수에 사용할 종목을 포트별로 등록하세요. 등록된 후보와 보유
               종목을 기준으로 위의 조정 수량을 계산합니다. 포트별 순서가 매수
               우선순위입니다. 포트 변경·삭제는 같은 코드의 기존 자동 배정에도
-              영향을 주며, 직접 배정은 유지됩니다.
+              영향을 주며 직접 배정은 유지됩니다.
             </p>
             <div className={styles.ownedRulesHead}>
               <strong>후보 종목 검색</strong>
@@ -3310,7 +3306,7 @@ export default function PortfolioBuilder({
             <Trend key={`${trendKey}:${historyPeriod}`} points={history} color={trendColor} />
             <details className={styles.historyTable}>
               <summary>일별 기록 보기 · {historyRows.length}일</summary>
-              <p className={styles.help}>선택한 포트·기간의 마지막 관측값입니다. 보유 정보 변경 표지는 전체 자산의 수량·단가·입력 금액 등 저장 정보가 이전 관측과 달라졌다는 의미이며 거래 내역이 아닙니다.</p>
+              <p className={styles.help}>하루 중 마지막으로 기록된 평가액입니다. ‘변경 기록’은 그날 수량·단가 등 저장한 정보가 바뀌었다는 뜻이며 거래 내역은 아닙니다.</p>
               <table><thead><tr><th scope="col">날짜</th><th scope="col">평가액</th><th scope="col">보유 정보</th></tr></thead><tbody>{historyRows.map(point => <tr key={point.date}><td>{point.date}</td><td>{fmt(point.valueKrw)}</td><td>{changedDays.has(point.date) ? "변경 기록" : point.positionSignature ? "—" : "비교 정보 없음"}</td></tr>)}</tbody></table>
             </details>
             {trendKey === "__TOTAL__" && totalHistory.length < 2 && (
@@ -3345,7 +3341,7 @@ export default function PortfolioBuilder({
                   {firstPoint?.date ?? "—"} {firstPoint?.recordedAt ? kstTime(firstPoint.recordedAt, true) : "시각 미기록"} 이후 ~ {lastPoint?.date ?? "—"} {lastPoint?.recordedAt ? kstTime(lastPoint.recordedAt, true) : "시각 미기록"}까지 · 시작 시각 제외 / 종료 시각 포함. 순입금 제외 증감은 투자 수익률이 아닙니다.
                 </p>
                 {performance.ambiguous.length > 0 && <p className={styles.help} role="status">시각 확인이 필요한 경계일 입출금 {performance.ambiguous.length}건: {performance.ambiguous.map((flow) => `${flow.date} ${flow.note || (flow.amountKrw > 0 ? "입금" : "출금")}`).join(", ")}. 아래 입출금 내역의 연필 버튼에서 실제 발생 시각을 입력하세요.</p>}
-                <details className={styles.metricBasis}><summary>기록 시각과 입출금 집계 기준 <ChevronDown size={14} /></summary><p>입출금 발생 시각이 시작 평가액 이후이면서 종료 평가액 시각 이하인 내역을 집계합니다. 과거 입출금에 시각이 없고 기간 경계일에 해당하면 증감 계산을 보류합니다. 아래 내역에서 실제 시각을 확인해 수정해 주세요. 순입금 제외 증감은 평가액 변화에서 입출금을 뺀 참고값으로 신규 자산 등록·수량 수정, 배당·수수료·환율 변동도 포함합니다.</p></details>
+                <details className={styles.metricBasis}><summary>기록 시각과 입출금 집계 기준 <ChevronDown size={14} /></summary><p>첫 기록과 마지막 기록 사이에 발생한 입출금만 더합니다. 기간 첫날이나 마지막 날 입출금에 시각이 없으면 계산을 보류하니, 아래 내역에서 시각을 입력해 주세요.</p><p>순입금 제외 증감은 평가액 변화에서 입출금을 뺀 참고값입니다. 자산 추가·수량 수정, 배당·수수료·환율 변동도 함께 들어갑니다.</p></details>
               </div>
             )}
             <details className={styles.flowDetails}>
@@ -3353,7 +3349,7 @@ export default function PortfolioBuilder({
                 입출금 기록 {draft.cashFlows.length}건 <ChevronDown size={15} />
               </summary>
               <p className={styles.help}>
-                여기서 직접 등록한 입출금은 분석용이며 잔고를 바꾸지 않습니다. 자산 수정의 외부 입출금으로 등록하면 잔고와 기록에 함께 반영되므로, 같은 내역을 다시 등록하지 마세요. 계좌 간 이동은 외부 입출금으로 등록하지 않습니다.
+                여기서 등록한 입출금은 분석에만 쓰이고 잔고는 바뀌지 않습니다. 잔고까지 바꾸려면 ‘현금 잔고 수정’에서 외부 입출금으로 등록하세요.
               </p>
               <button type="button" className={styles.ghost} onClick={onEditHoldings}>현금 잔고 수정</button>
 

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPublicNotice } from "../../../lib/public-notices";
+import NoticeTitle from "../../NoticeTitle";
 import styles from "../notices.module.css";
 
 export const dynamic = "force-dynamic";
@@ -47,7 +48,7 @@ export default async function NoticePage({ params }: Props) {
       <article>
         <header className={styles.heading}>
           {notice.important && <span className={styles.badge}>중요 공지</span>}
-          <h1>{notice.title}</h1>
+          <h1><NoticeTitle title={notice.title} /></h1>
           <time dateTime={notice.created_at.toISOString()}>
             {notice.created_at.toLocaleDateString("ko-KR", {
               timeZone: "Asia/Seoul",

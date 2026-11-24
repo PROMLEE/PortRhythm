@@ -149,6 +149,15 @@
 .question p {
   margin-bottom: 0;
 }
+.answerPoints {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  line-height: 1.65;
+  word-break: keep-all;
+}
 .end {
   padding: 32px 0;
 }

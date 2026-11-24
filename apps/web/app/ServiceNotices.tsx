@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import { ArrowLeft, ChevronRight, X } from "lucide-react";
 import styles from "./ServiceNotices.module.css";
+import NoticeTitle from "./NoticeTitle";
+import { noticeBannerTitle } from "../lib/notice-title";
 type Notice = {
   id: string;
   title: string;
@@ -81,7 +83,7 @@ export default function ServiceNotices({
           onClick={() => onOpen(latest.id)}
         >
           <span>공지</span>
-          <strong>{latest.title}</strong>
+          <strong title={latest.title}>{noticeBannerTitle(latest.title)}</strong>
           <ChevronRight size={16} aria-hidden="true" />
         </button>
         <button
@@ -106,7 +108,6 @@ export default function ServiceNotices({
     <section className={styles.page} aria-label="공지사항">
       <header>
         <h1>공지사항</h1>
-        <p>업데이트와 서비스 소식을 확인하세요.</p>
       </header>
       {loading ? (
         <p role="status">공지를 불러오는 중입니다…</p>
@@ -136,7 +137,7 @@ export default function ServiceNotices({
               {selected.important && (
                 <span className={styles.important}>중요 공지</span>
               )}
-              <h2>{selected.title}</h2>
+              <h2><NoticeTitle title={selected.title} /></h2>
               <time dateTime={selected.created_at}>
                 {date(selected.created_at)}
               </time>
@@ -162,7 +163,7 @@ export default function ServiceNotices({
                 {n.important && (
                   <small className={styles.important}>중요</small>
                 )}
-                <strong>{n.title}</strong>
+                <strong><NoticeTitle title={n.title} /></strong>
                 <time dateTime={n.created_at}>{date(n.created_at)}</time>
               </span>
               <ChevronRight size={18} aria-hidden="true" />

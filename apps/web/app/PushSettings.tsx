@@ -148,7 +148,7 @@ export default function PushSettings() {
         throw new Error(
           allowed === "default"
             ? "알림 요청이 아직 허용되지 않았습니다. 요청 창을 닫았다면 알림 켜기를 다시 눌러 주세요."
-            : `${context.browser}이 권한 요청을 허용하지 않아 알림을 연결하지 못했습니다. 권한 창이 나타나지 않았다면 브라우저가 요청을 즉시 거절한 상태이며, 사이트에서 이를 강제로 해제할 수는 없습니다.`,
+            : `${context.browser}에서 알림이 차단돼 있습니다. 브라우저 설정에서 이 사이트의 알림을 허용한 뒤 다시 시도해 주세요.`,
         );
       const registration = await navigator.serviceWorker.register("/sw.js", {
         scope: "/",
@@ -185,7 +185,7 @@ export default function PushSettings() {
       setEnvironment(next);
       setMessage(
         e instanceof DOMException && e.name === "NotAllowedError"
-          ? "알림 연결이 허용되지 않았습니다. 사이트 권한과 휴대폰의 브라우저 앱 알림 권한을 함께 확인한 뒤 상태 다시 확인을 눌러 주세요."
+          ? "알림이 허용되지 않았습니다. 사이트 알림 권한과 휴대폰의 브라우저 앱 알림 권한을 확인한 뒤 ‘상태 다시 확인’을 눌러 주세요."
           : e instanceof Error
             ? e.message
             : "알림 설정을 변경하지 못했습니다.",
